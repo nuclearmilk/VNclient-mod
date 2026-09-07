@@ -109,8 +109,16 @@ class _ProducerBody extends ConsumerWidget {
         FilledButton.icon(
           icon: const Icon(Icons.search),
           label: const Text('查看该制作方的作品'),
-          onPressed: () => context.push(
-              '/webview?url=${Uri.encodeComponent("https://vndb.org/${producer.id}")}&title=${Uri.encodeComponent(producer.name)}'),
+          onPressed: () {
+            final uri = Uri(
+              path: '/search',
+              queryParameters: {
+                'developerId': producer.id,
+                'developerName': producer.name,
+              },
+            );
+            context.go(uri.toString());
+          },
         ),
         const SizedBox(height: 24),
       ],

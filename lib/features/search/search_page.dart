@@ -28,9 +28,16 @@ enum SearchTarget {
 
 /// 搜索页：可切换搜索目标，VN 与角色目标各自带完整高级筛选面板。
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key, this.initialTarget});
+  const SearchPage({
+    super.key,
+    this.initialTarget,
+    this.initialDeveloperId,
+    this.initialDeveloperName,
+  });
 
   final SearchTarget? initialTarget;
+  final String? initialDeveloperId;
+  final String? initialDeveloperName;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -190,6 +197,28 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    if (widget.initialDeveloperId != null) {
+      _target = SearchTarget.vn;
+      _termController.clear();
+      _devController.text = widget.initialDeveloperId!;
+      _showAdvanced = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _runSearch();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SearchPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialDeveloperId != null &&
+        widget.initialDeveloperId != oldWidget.initialDeveloperId) {
+      _target = SearchTarget.vn;
+      _termController.clear();
+      _devController.text = widget.initialDeveloperId!;
+      _showAdvanced = false;
+      _runSearch();
+    }
   }
 
   @override
@@ -261,7 +290,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     }
     final devTerm = _devController.text.trim();
     if (devTerm.isNotEmpty) {
-      parts.add(['developer', '=', devTerm]);
+      if (devTerm.startsWith('p') && int.tryParse(devTerm.substring(1)) != null) {
+        parts.add(['developer', '=', ['id', '=', devTerm]]);
+      } else {
+        parts.add(['developer', '=', ['search', '=', devTerm]]);
+      }
     }
     if (parts.isEmpty) return <Object>[];
     if (parts.length == 1) return parts.first;

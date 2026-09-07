@@ -84,7 +84,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/search',
-                builder: (context, state) => const SearchPage(),
+                builder: (context, state) {
+                  final devId = state.uri.queryParameters['developerId'];
+                  final devName = state.uri.queryParameters['developerName'];
+                  return SearchPage(
+                    key: ValueKey('search_${state.uri.toString()}'),
+                    initialTarget: SearchTarget.vn, // Force target if needed, but devId logic handles it
+                    initialDeveloperId: devId,
+                    initialDeveloperName: devName,
+                  );
+                },
               ),
             ],
           ),

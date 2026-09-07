@@ -218,9 +218,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.title),
             title: const Text('作品名显示'),
-            subtitle: Text(theme.titleDisplay == TitleDisplayMode.japanese
-                ? '日文/原名'
-                : '罗马音'),
+            subtitle: Text(theme.titleDisplay == TitleDisplayMode.chinese
+                ? '优先中文'
+                : theme.titleDisplay == TitleDisplayMode.japanese
+                    ? '日文/原名'
+                    : '罗马音'),
             trailing: DropdownButton<TitleDisplayMode>(
               value: theme.titleDisplay,
               underline: const SizedBox(),
@@ -232,6 +234,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 DropdownMenuItem(
                   value: TitleDisplayMode.japanese,
                   child: Text('日文/原名'),
+                ),
+                DropdownMenuItem(
+                  value: TitleDisplayMode.chinese,
+                  child: Text('优先中文'),
                 ),
               ],
               onChanged: (m) {

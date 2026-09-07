@@ -656,60 +656,14 @@ class _ListEntryTile extends ConsumerWidget {
         ref.watch(themeNotifierProvider.select((s) => s.titleDisplay));
     final title = vn == null
         ? entry.id
-        : TitleResolver.resolveSimple(
-            vn.title as String? ?? entry.id,
-            vn.alttitle as String?,
-            titleMode,
-          );
+        : TitleResolver.resolve(vn, titleMode);
     final langs = vn?.languages as List<String>? ?? const <String>[];
     final plats = vn?.platforms as List<String>? ?? const <String>[];
     final labels = (entry.labels as List?) ?? const [];
 
-    return Dismissible(
-      key: ValueKey(entry.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 16),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (_) async {
-        return await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('移除'),
-            content: Text('从列表移除 ${vn?.title ?? "此条目"} 吗？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('移除'),
-              ),
-            ],
-          ),
-        );
-      },
-      onDismissed: (_) async {
-        try {
-          await ProviderScope.containerOf(context)
-              .read(listEndpointProvider)
-              .deleteList(entry.id);
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('删除失败: $e')),
-            );
-          }
-        }
-        onRefresh();
-      },
-      child: Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(8),
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(8),
           leading: vn?.image?.thumbnail != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(4),
@@ -789,8 +743,7 @@ class _ListEntryTile extends ConsumerWidget {
             builder: (_) => ListEditDialog(vnId: entry.id),
           ).then((_) => onRefresh()),
         ),
-      ),
-    );
+      );
   }
 }
 

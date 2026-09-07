@@ -15,6 +15,20 @@ class TitleResolver {
     switch (mode) {
       case TitleDisplayMode.romanized:
         return vn.title;
+      case TitleDisplayMode.chinese:
+        for (final t in vn.titles) {
+          if (t.lang == 'zh-Hans' || t.lang == 'zh-Hant' || t.lang == 'zh') {
+            return t.title;
+          }
+        }
+        // Fall back to japanese if no chinese title
+        if (vn.alttitle != null && vn.alttitle!.isNotEmpty) {
+          return vn.alttitle!;
+        }
+        for (final t in vn.titles) {
+          if (t.main) return t.title;
+        }
+        return vn.title;
       case TitleDisplayMode.japanese:
         if (vn.alttitle != null && vn.alttitle!.isNotEmpty) {
           return vn.alttitle!;
@@ -39,6 +53,8 @@ class TitleResolver {
         return null;
       case TitleDisplayMode.japanese:
         return vn.title;
+      case TitleDisplayMode.chinese:
+        return (vn.alttitle != null && vn.alttitle!.isNotEmpty) ? vn.alttitle : null;
     }
   }
 
@@ -52,6 +68,7 @@ class TitleResolver {
       case TitleDisplayMode.romanized:
         return title;
       case TitleDisplayMode.japanese:
+      case TitleDisplayMode.chinese:
         return (alttitle != null && alttitle.isNotEmpty) ? alttitle : title;
     }
   }

@@ -22,6 +22,7 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
   final _startedController = TextEditingController();
   final _finishedController = TextEditingController();
   final Set<int> _selectedLabels = {};
+  final Set<int> _initialLabels = {};
   bool _saving = false;
   bool _loaded = false; // 是否已从服务器预填
 
@@ -52,12 +53,19 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
       _selectedLabels
         ..clear()
         ..addAll(entry.labels.where((l) => l.id != 0).map((l) => l.id));
+      _initialLabels
+        ..clear()
+        ..addAll(_selectedLabels);
     });
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
     final endpoint = ref.read(listEndpointProvider);
+    
+    final toSet = _selectedLabels.difference(_initialLabels).toList();
+    final toUnset = _initialLabels.difference(_selectedLabels).toList();
+
     try {
       await endpoint.patchList(
         widget.vnId,
@@ -71,7 +79,8 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
         finished: _finishedController.text.trim().isEmpty
             ? null
             : _finishedController.text.trim(),
-        labelsSet: _selectedLabels.toList(),
+        labelsSet: toSet.isNotEmpty ? toSet : null,
+        labelsUnset: toUnset.isNotEmpty ? toUnset : null,
       );
       // 刷新当前 VN 的列表记录缓存。
       ref.invalidate(userVnListEntryProvider(widget.vnId));

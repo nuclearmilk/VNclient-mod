@@ -173,33 +173,49 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        displayTitle,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(color: Colors.black54, blurRadius: 4),
-                          ],
+                      GestureDetector(
+                        onLongPress: () {
+                          Clipboard.setData(ClipboardData(text: displayTitle));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('已复制标题')),
+                          );
+                        },
+                        child: Text(
+                          displayTitle,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(color: Colors.black54, blurRadius: 4),
+                            ],
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       if (secondaryTitle != null &&
                           secondaryTitle != displayTitle) ...[
                         const SizedBox(height: 4),
-                        Text(
-                          secondaryTitle,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withValues(alpha: 0.8),
-                            shadows: const [
-                              Shadow(color: Colors.black54, blurRadius: 4),
-                            ],
+                        GestureDetector(
+                          onLongPress: () {
+                            Clipboard.setData(ClipboardData(text: secondaryTitle));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('已复制副标题')),
+                            );
+                          },
+                          child: Text(
+                            secondaryTitle,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              shadows: const [
+                                Shadow(color: Colors.black54, blurRadius: 4),
+                              ],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                       const SizedBox(height: 8),

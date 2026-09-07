@@ -13,6 +13,9 @@ enum TitleDisplayMode {
 
   /// Original-script title (the API `alttitle` / main title's `title` field).
   japanese,
+
+  /// Chinese title (look for lang == 'zh-Hans' or 'zh').
+  chinese,
 }
 
 /// Persisted theme settings: seed color, brightness mode, background theme,
@@ -108,6 +111,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
       customBackgroundPath: customBg,
       titleDisplay: switch (titleStr) {
         'japanese' => TitleDisplayMode.japanese,
+        'chinese' => TitleDisplayMode.chinese,
         _ => TitleDisplayMode.romanized,
       },
     );
@@ -173,6 +177,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
       switch (mode) {
         TitleDisplayMode.romanized => 'romanized',
         TitleDisplayMode.japanese => 'japanese',
+        TitleDisplayMode.chinese => 'chinese',
       },
     );
   }

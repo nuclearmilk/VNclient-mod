@@ -11,7 +11,7 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
   static const String listFields =
       'id, added, voted, lastmod, vote, started, finished, notes,'
       'labels{id,label},'
-      'vn{title, alttitle, released, image{id,url,thumbnail,thumbnail_dims},'
+      'vn{title, alttitle, titles{lang,title,main}, released, image{id,url,thumbnail,thumbnail_dims},'
       'languages, platforms, devstatus, rating, votecount, tags{id,name,rating}},'
       'releases{id,list_status,title}';
 
