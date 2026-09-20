@@ -9,11 +9,11 @@ class AppConstants {
   static const String siteBaseUrl = 'https://vndb.org';
 
   /// Current app version (keep in sync with pubspec.yaml).
-  static const String appVersion = '1.3.5';
+static const String appVersion = '1.3.8';
 
   /// GitHub releases API endpoint for update checking.
   static const String githubReleasesApi =
-      'https://api.github.com/repos/sunxibing114514/VNclient/releases/latest';
+      'https://api.github.com/repos/nuclearmilk/VNclient-mod/releases/latest';
 
   /// Secure storage key for the API auth token.
   static const String tokenKey = 'vndb_api_token';
@@ -61,7 +61,7 @@ class AppLinks {
 
   static const String patreon = 'https://www.patreon.com/vndb';
   static const String subscribestar = 'https://subscribestar.adult/vndb';
-  static const String github = 'https://github.com/sunxibing114514/VNclient';
+  static const String github = 'https://github.com/nuclearmilk/VNclient-mod';
 
   static const String recentChanges = 'https://vndb.org/t/ge';
   static const String discussionBoard = 'https://vndb.org/t';
@@ -80,5 +80,5 @@ class AppLinks {
 
   /// Latest release HTML page (for "view on GitHub" button).
   static const String latestReleaseUrl =
-      'https://github.com/sunxibing114514/VNclient/releases/latest';
+      'https://github.com/nuclearmilk/VNclient-mod/releases/latest';
 }

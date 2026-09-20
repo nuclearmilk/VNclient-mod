@@ -211,7 +211,7 @@ class VnEndpoint extends BaseEndpoint<Vn> {
   /// form `['staff', '=', ['id', '=', sid]]` — a plain value such as an
   /// integer aid is rejected with "Invalid query".
   Future<List<StaffVn>> byStaff(String staffId) async {
-    const fields = 'title, staff{id,aid,role,note}';
+    const fields = 'title, titles{lang,title}, staff{id,aid,role,note}';
     final result = await query(
       filters: ['staff', '=', ['id', '=', staffId]],
       fields: fields,
@@ -230,8 +230,26 @@ class VnEndpoint extends BaseEndpoint<Vn> {
           break;
         }
       }
-      return StaffVn(id: vn.id, role: role, title: vn.title, note: note);
+      return StaffVn(id: vn.id, role: role, title: vn.title, titleZh: vn.titles.where((t) => t.lang == 'zh-Hans' || t.lang == 'zh-Hant' || t.lang == 'zh').map((t) => t.title).firstOrNull, titleJp: vn.titles.where((t) => t.lang == 'ja').map((t) => t.title).firstOrNull, note: note);
     }).toList();
+  }
+
+  Future<List<VnVaStaff>> voiceActorsByCharacter(String characterId) async {
+    const fields = 'va{staff{id,name,original},character{id}}';
+    final result = await query(
+      filters: ['character', '=', ['id', '=', characterId]],
+      fields: fields,
+      results: 100,
+    );
+    final actors = <String, VnVaStaff>{};
+    for (final vn in result.results) {
+      for (final entry in vn.va) {
+        if (entry.character?.id == characterId && entry.staff != null) {
+          actors[entry.staff!.id] = entry.staff!;
+        }
+      }
+    }
+    return actors.values.toList();
   }
 
   static final _random = math.Random();

@@ -147,6 +147,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           _SectionTitle(l10n.tr('account')),
           ListTile(
+            leading: const Icon(Icons.home_work_outlined),
+            title: const Text('默认打开页面'),
+            trailing: DropdownButton<StartupPage>(
+              value: theme.startupPage,
+              underline: const SizedBox(),
+              items: const [
+                DropdownMenuItem(value: StartupPage.home, child: Text('首页')),
+                DropdownMenuItem(value: StartupPage.search, child: Text('搜索')),
+                DropdownMenuItem(value: StartupPage.list, child: Text('列表')),
+                DropdownMenuItem(value: StartupPage.profile, child: Text('我的')),
+              ],
+              onChanged: (p) {
+                if (p != null) ref.read(themeNotifierProvider.notifier).setStartupPage(p);
+              },
+            ),
+          ),
+          ListTile(
             leading: const Icon(Icons.vpn_key),
             title: Text(l10n.tr('apiToken')),
             subtitle: Text(auth.isAuthenticated
@@ -373,7 +390,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.code),
             title: const Text('GitHub'),
-            subtitle: const Text('sunxibing114514/VNclient'),
+subtitle: const Text('nuclearmilk/VNclient-mod'),
             onTap: () => launchUrl(Uri.parse(AppLinks.github),
                 mode: LaunchMode.externalApplication),
           ),

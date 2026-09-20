@@ -106,8 +106,8 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
     final displayTitle = TitleResolver.resolve(vn, titleMode);
     final secondaryTitle = TitleResolver.secondary(vn, titleMode);
 
-    return CustomScrollView(
-      slivers: [
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
         // --- 1. Glassmorphism top nav bar ---
         SliverAppBar(
           pinned: true,
@@ -300,10 +300,8 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
           ),
         ),
 
-        // --- 5. Tab content ---
-        SliverFillRemaining(
-          hasScrollBody: true,
-          child: TabBarView(
+      ],
+      body: TabBarView(
             controller: _tabController,
             children: [
               // Overview tab
@@ -320,10 +318,6 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
               _StaffTab(vn: vn),
             ],
           ),
-        ),
-
-        const SliverToBoxAdapter(child: SizedBox(height: 80)),
-      ],
     );
   }
 
@@ -642,8 +636,7 @@ class _CharactersTab extends StatelessWidget {
             childAspectRatio: 0.6,
           ),
           itemCount: list.length,
-          itemBuilder: (context, i) =>
-              _CharacterTile(character: list[i]),
+          itemBuilder: (context, i) => _CharacterTile(character: list[i]),
         );
       },
     );
@@ -1090,7 +1083,9 @@ class _CharacterTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            character.name,
+            character.original?.isNotEmpty == true
+                ? character.original!
+                : character.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12),

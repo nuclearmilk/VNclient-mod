@@ -12,15 +12,15 @@ class TitleResolver {
 
   /// Resolves the display title for a [Vn] given the user's preference.
   static String resolve(Vn vn, TitleDisplayMode mode) {
+    for (final t in vn.titles) {
+      if (t.lang == 'zh-Hans' || t.lang == 'zh-Hant' || t.lang == 'zh') {
+        return t.title;
+      }
+    }
     switch (mode) {
       case TitleDisplayMode.romanized:
         return vn.title;
       case TitleDisplayMode.chinese:
-        for (final t in vn.titles) {
-          if (t.lang == 'zh-Hans' || t.lang == 'zh-Hant' || t.lang == 'zh') {
-            return t.title;
-          }
-        }
         // Fall back to japanese if no chinese title
         if (vn.alttitle != null && vn.alttitle!.isNotEmpty) {
           return vn.alttitle!;

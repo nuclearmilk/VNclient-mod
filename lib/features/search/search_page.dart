@@ -261,9 +261,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   /// 构建 VN 的高级筛选 filter 树。
   Object? _buildVnFilters() {
-    if (_compactController.text.trim().isNotEmpty) {
-      return _compactController.text.trim();
-    }
     final parts = <List<dynamic>>[];
     final term = _termController.text.trim();
     if (term.isNotEmpty) {
@@ -404,9 +401,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _error = null;
     });
     try {
-      final hasCompact = _target == SearchTarget.vn &&
-          _compactController.text.trim().isNotEmpty;
-      final dynamic result = await _runQuery(compactFilters: hasCompact);
+      final dynamic result = await _runQuery();
       setState(() {
         _items.addAll(result.results as List);
         _hasMore = result.more as bool;
@@ -560,38 +555,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     hintText: _searchHint(),
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: _runSearch,
+                      icon: const Icon(Icons.clear),
+                      tooltip: '清空',
+                      onPressed: () {
+                        _termController.clear();
+                        setState(() => _items.clear());
+                      },
                     ),
                   ),
                   onSubmitted: (_) => _runSearch(),
                 ),
-                if (_target == SearchTarget.vn) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _compactController,
-                          decoration: const InputDecoration(
-                            hintText: '或粘贴 compact filter 字符串',
-                            isDense: true,
-                            prefixIcon: Icon(Icons.code),
-                          ),
-                          onSubmitted: (_) => _runSearch(),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(_showAdvanced
-                            ? Icons.expand_less
-                            : Icons.expand_more),
-                        tooltip: '高级筛选',
-                        onPressed: () => setState(
-                            () => _showAdvanced = !_showAdvanced),
-                      ),
-                    ],
+                if (_target == SearchTarget.vn)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      icon: Icon(_showAdvanced ? Icons.expand_less : Icons.expand_more),
+                      tooltip: '高级筛选',
+                      onPressed: () => setState(() => _showAdvanced = !_showAdvanced),
+                    ),
                   ),
-                ],
                 if (_target == SearchTarget.character) ...[
                   const SizedBox(height: 8),
                   Align(

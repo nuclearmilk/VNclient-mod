@@ -121,7 +121,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
           const _AboutTile(
             icon: Icons.code,
             title: 'GitHub',
-            subtitle: 'sunxibing114514/VNclient',
+subtitle: 'nuclearmilk/VNclient-mod',
             url: AppLinks.github,
           ),
           const _AboutTile(

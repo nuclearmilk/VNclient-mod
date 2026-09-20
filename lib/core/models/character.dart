@@ -101,6 +101,7 @@ class CharacterVn {
     this.id = '',
     this.title = '',
     this.release,
+    this.voiceActors = const [],
   });
 
   final int spoiler;
@@ -108,6 +109,7 @@ class CharacterVn {
   final String id;
   final String title;
   final CharacterVnRelease? release;
+  final List<CharacterVoiceActor> voiceActors;
 
   factory CharacterVn.fromJson(Map<String, dynamic> json) => CharacterVn(
         spoiler: json['spoiler'] as int? ?? 0,
@@ -118,7 +120,24 @@ class CharacterVn {
             ? null
             : CharacterVnRelease.fromJson(
                 json['release'] as Map<String, dynamic>),
+        voiceActors: (json['va'] as List? ?? [])
+            .map((e) => CharacterVoiceActor.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
+}
+
+class CharacterVoiceActor {
+  const CharacterVoiceActor({this.staffId = '', this.name = ''});
+  final String staffId;
+  final String name;
+
+  factory CharacterVoiceActor.fromJson(Map<String, dynamic> json) {
+    final staff = json['staff'] as Map<String, dynamic>?;
+    return CharacterVoiceActor(
+      staffId: staff?['id'] as String? ?? '',
+      name: staff?['name'] as String? ?? '',
+    );
+  }
 }
 
 class CharacterVnRelease {

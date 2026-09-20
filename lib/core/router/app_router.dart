@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../constants/app_constants.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../../features/about/about_page.dart';
 import '../../features/follows/follow_list_page.dart';
 import '../../features/characters/character_detail_page.dart';
@@ -43,10 +44,16 @@ const _protectedPrefixes = <String>['/list', '/profile'];
 /// The application router.
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authNotifierProvider);
+  final startupPage = ref.watch(themeNotifierProvider).startupPage;
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/home',
+    initialLocation: switch (startupPage) {
+      StartupPage.search => '/search',
+      StartupPage.list => '/list',
+      StartupPage.profile => '/profile',
+      StartupPage.home => '/home',
+    },
     redirect: (context, state) {
       final loggedIn = auth.isAuthenticated;
       final goingToLogin = state.matchedLocation == '/login';

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/staff.dart';
+import '../../core/models/character.dart';
 import '../../core/providers/detail_providers.dart';
 import '../../core/providers/endpoints_provider.dart';
 import '../../widgets/async_value_widget.dart';
@@ -40,17 +42,32 @@ class _StaffBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vns = ref.watch(vnsByStaffProvider(staffId));
+    final characters = ref.watch(charactersBySeiyuuProvider(staffId));
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         // Name header
-        Text(staff.name, style: Theme.of(context).textTheme.headlineSmall),
-        if (staff.original != null && staff.original!.isNotEmpty)
+        GestureDetector(
+          onLongPress: () => _copyStaffName(
+            context,
+            staff.original?.isNotEmpty == true ? staff.original! : staff.name,
+          ),
+          child: Text(
+            staff.original?.isNotEmpty == true ? staff.original! : staff.name,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+        ),
+        if (staff.original?.isNotEmpty == true && staff.name != staff.original)
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: Text(staff.original!,
-                style: Theme.of(context).textTheme.bodyMedium),
+            child: GestureDetector(
+              onLongPress: () => _copyStaffName(context, staff.name),
+              child: Text(
+                staff.name,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
           ),
         const SizedBox(height: 12),
         // Info chips
@@ -75,9 +92,7 @@ class _StaffBody extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(a.name),
               subtitle: Text(a.latin ?? ''),
-              trailing: a.ismain
-                  ? const Chip(label: Text('main'))
-                  : null,
+              trailing: a.ismain ? const Chip(label: Text('main')) : null,
             ),
         ],
         // Description
@@ -96,6 +111,11 @@ class _StaffBody extends ConsumerWidget {
         AsyncValueWidget(
           value: vns,
           data: (list) => _StaffVnsSection(vns: list),
+        ),
+        const SizedBox(height: 16),
+        AsyncValueWidget(
+          value: characters,
+          data: (list) => _StaffCharactersSection(characters: list),
         ),
         // External links
         if (staff.extlinks.isNotEmpty) ...[
@@ -116,6 +136,43 @@ class _StaffBody extends ConsumerWidget {
       ],
     );
   }
+
+  void _copyStaffName(BuildContext context, String name) {
+    Clipboard.setData(ClipboardData(text: name));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已复制姓名')),
+    );
+  }
+}
+
+class _StaffCharactersSection extends StatelessWidget {
+  const _StaffCharactersSection({required this.characters});
+  final List<Character> characters;
+
+  @override
+  Widget build(BuildContext context) {
+    if (characters.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(
+            title: '配音角色',
+            icon: Icons.person_outline,
+            padding: EdgeInsets.zero),
+        for (final character in characters)
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: Text(character.original?.isNotEmpty == true
+                ? character.original!
+                : character.name),
+            subtitle: Text(character.vns.map((v) => v.title).join('、')),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: () => context.push('/character/${character.id}'),
+          ),
+      ],
+    );
+  }
 }
 
 /// Displays the staff member's credited VNs, grouped by role.
@@ -132,7 +189,7 @@ class _StaffVnsSection extends StatelessWidget {
     // Group by role.
     final byRole = <String, List<StaffVn>>{};
     for (final v in vns) {
-      final role = v.role.isEmpty ? '其他' : v.role;
+      final role = _roleLabel(v.role);
       byRole.putIfAbsent(role, () => []).add(v);
     }
     final roles = byRole.keys.toList()..sort();
@@ -176,13 +233,14 @@ class _StaffVnsSection extends StatelessWidget {
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 title: Text(
-                  v.title,
+                  v.titleZh ?? v.titleJp ?? v.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 14),
                 ),
                 subtitle: v.note != null && v.note!.isNotEmpty
-                    ? Text(v.note!, maxLines: 1, overflow: TextOverflow.ellipsis)
+                    ? Text(v.note!,
+                        maxLines: 1, overflow: TextOverflow.ellipsis)
                     : null,
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () => context.push('/vn/${v.id}'),
@@ -191,5 +249,22 @@ class _StaffVnsSection extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'songs':
+        return '歌曲';
+      case 'seiyuu':
+        return '配音';
+      case 'scenario':
+        return '剧本';
+      case 'director':
+        return '导演';
+      case 'staff':
+        return '制作人员';
+      default:
+        return role.isEmpty ? '其他' : role;
+    }
   }
 }

@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/character.dart';
 import '../../core/providers/endpoints_provider.dart';
+import '../../core/providers/detail_providers.dart';
 import '../../widgets/async_value_widget.dart';
 import '../../widgets/section_header.dart';
 
@@ -32,12 +34,13 @@ class CharacterDetailPage extends ConsumerWidget {
   }
 }
 
-class _CharacterBody extends StatelessWidget {
+class _CharacterBody extends ConsumerWidget {
   const _CharacterBody({required this.character});
   final Character character;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final voiceActors = ref.watch(voiceActorsByCharacterProvider(character.id));
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -77,11 +80,73 @@ class _CharacterBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(character.name,
-                      style: Theme.of(context).textTheme.titleLarge),
-                  if (character.original != null)
-                    Text(character.original!,
-                        style: Theme.of(context).textTheme.bodyMedium),
+                  GestureDetector(
+                    onLongPress: () => _copyCharacterName(
+                      context,
+                      character.original?.isNotEmpty == true
+                          ? character.original!
+                          : character.name,
+                    ),
+                    child: Text(
+                      character.original?.isNotEmpty == true
+                          ? character.original!
+                          : character.name,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  if (character.original?.isNotEmpty == true &&
+                      character.name != character.original)
+                    GestureDetector(
+                      onLongPress: () => _copyCharacterName(
+                        context,
+                        character.name,
+                      ),
+                      child: Text(
+                        character.name,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ...voiceActors.when(
+                    data: (list) => list.isEmpty
+                        ? []
+                        : [
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                for (final va in list)
+                                  ActionChip(
+                                    avatar: const Icon(Icons.mic, size: 16),
+                                    label: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        GestureDetector(
+                                          onLongPress: () =>
+                                              _copyVoiceActorName(
+                                            context,
+                                            va.original?.isNotEmpty == true
+                                                ? va.original!
+                                                : va.name,
+                                          ),
+                                          child: Text(
+                                            '声优：${va.original?.isNotEmpty == true ? va.original! : va.name}',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    onPressed: va.id.isEmpty
+                                        ? null
+                                        : () => context.push('/staff/${va.id}'),
+                                  ),
+                              ],
+                            ),
+                          ],
+                    loading: () => [],
+                    error: (_, __) => [],
+                  ),
                   const SizedBox(height: 8),
                   if (character.aliases.isNotEmpty)
                     Text('别名: ${character.aliases.join(", ")}',
@@ -94,18 +159,23 @@ class _CharacterBody extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        const SectionHeader(title: '属性', icon: Icons.info, padding: EdgeInsets.zero),
+        const SectionHeader(
+            title: '属性', icon: Icons.info, padding: EdgeInsets.zero),
         _kv(context, '血型', character.bloodType?.toUpperCase()),
-        _kv(context, '身高', character.height == null ? null : '${character.height} cm'),
-        _kv(context, '体重', character.weight == null ? null : '${character.weight} kg'),
+        _kv(context, '身高',
+            character.height == null ? null : '${character.height} cm'),
+        _kv(context, '体重',
+            character.weight == null ? null : '${character.weight} kg'),
         _kv(context, '三围', _measures(context)),
         _kv(context, '罩杯', character.cup),
         _kv(context, '年龄', character.age == null ? null : '${character.age}'),
         if (character.birthday != null && character.birthday!.length == 2)
-          _kv(context, '生日', '${character.birthday![0]}月 ${character.birthday![1]}日'),
+          _kv(context, '生日',
+              '${character.birthday![0]}月 ${character.birthday![1]}日'),
         if (character.traits.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const SectionHeader(title: '特质', icon: Icons.category, padding: EdgeInsets.zero),
+          const SectionHeader(
+              title: '特质', icon: Icons.category, padding: EdgeInsets.zero),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -120,12 +190,14 @@ class _CharacterBody extends StatelessWidget {
         ],
         if (character.description != null) ...[
           const SizedBox(height: 12),
-          const SectionHeader(title: '简介', icon: Icons.description, padding: EdgeInsets.zero),
+          const SectionHeader(
+              title: '简介', icon: Icons.description, padding: EdgeInsets.zero),
           Text(character.description!),
         ],
         if (character.vns.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const SectionHeader(title: '登场作品', icon: Icons.book, padding: EdgeInsets.zero),
+          const SectionHeader(
+              title: '登场作品', icon: Icons.book, padding: EdgeInsets.zero),
           for (final v in character.vns)
             ListTile(
               dense: true,
@@ -141,10 +213,26 @@ class _CharacterBody extends StatelessWidget {
   }
 
   String _measures(BuildContext context) {
-    if (character.bust == null && character.waist == null && character.hips == null) {
+    if (character.bust == null &&
+        character.waist == null &&
+        character.hips == null) {
       return '';
     }
     return '${character.bust ?? "-"}-${character.waist ?? "-"}-${character.hips ?? "-"}';
+  }
+
+  void _copyVoiceActorName(BuildContext context, String name) {
+    Clipboard.setData(ClipboardData(text: name));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已复制声优姓名')),
+    );
+  }
+
+  void _copyCharacterName(BuildContext context, String name) {
+    Clipboard.setData(ClipboardData(text: name));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已复制角色姓名')),
+    );
   }
 
   Widget _kv(BuildContext context, String label, String? value) {
@@ -159,7 +247,8 @@ class _CharacterBody extends StatelessWidget {
             child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
-              child: Text(value, style: Theme.of(context).textTheme.bodyMedium)),
+              child:
+                  Text(value, style: Theme.of(context).textTheme.bodyMedium)),
         ],
       ),
     );

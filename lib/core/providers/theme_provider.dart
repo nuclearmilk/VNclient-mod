@@ -18,6 +18,8 @@ enum TitleDisplayMode {
   chinese,
 }
 
+enum StartupPage { home, search, list, profile }
+
 /// Persisted theme settings: seed color, brightness mode, background theme,
 /// whether to blur sexual/violent images, the custom background path, and the
 /// preferred title display mode.
@@ -29,6 +31,7 @@ class ThemeSettings {
     this.blurNsfw = true,
     this.customBackgroundPath,
     this.titleDisplay = TitleDisplayMode.romanized,
+    this.startupPage = StartupPage.home,
   });
 
   final Color seedColor;
@@ -46,6 +49,7 @@ class ThemeSettings {
 
   /// Whether VN titles are shown romanized or in the original script.
   final TitleDisplayMode titleDisplay;
+  final StartupPage startupPage;
 
   /// Resolved background descriptor.
   AppBackground get background =>
@@ -63,6 +67,7 @@ class ThemeSettings {
     bool? blurNsfw,
     String? customBackgroundPath,
     TitleDisplayMode? titleDisplay,
+    StartupPage? startupPage,
   }) {
     return ThemeSettings(
       seedColor: seedColor ?? this.seedColor,
@@ -72,6 +77,7 @@ class ThemeSettings {
       customBackgroundPath:
           customBackgroundPath ?? this.customBackgroundPath,
       titleDisplay: titleDisplay ?? this.titleDisplay,
+      startupPage: startupPage ?? this.startupPage,
     );
   }
 }
@@ -88,6 +94,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
   static const _keyBlur = 'theme_blur_nsfw';
   static const _keyCustomBg = 'theme_custom_bg_path';
   static const _keyTitleDisplay = 'theme_title_display';
+  static const _keyStartupPage = 'startup_page';
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -97,6 +104,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
     final blur = prefs.getBool(_keyBlur);
     final customBg = prefs.getString(_keyCustomBg);
     final titleStr = prefs.getString(_keyTitleDisplay);
+    final startupStr = prefs.getString(_keyStartupPage);
     state = ThemeSettings(
       seedColor: seed == null
           ? const Color(0xFF325064)
@@ -113,6 +121,12 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
         'japanese' => TitleDisplayMode.japanese,
         'chinese' => TitleDisplayMode.chinese,
         _ => TitleDisplayMode.romanized,
+      },
+      startupPage: switch (startupStr) {
+        'search' => StartupPage.search,
+        'list' => StartupPage.list,
+        'profile' => StartupPage.profile,
+        _ => StartupPage.home,
       },
     );
   }
@@ -180,6 +194,12 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
         TitleDisplayMode.chinese => 'chinese',
       },
     );
+  }
+
+  Future<void> setStartupPage(StartupPage page) async {
+    state = state.copyWith(startupPage: page);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyStartupPage, page.name);
   }
 
   String _ext(String path) {

@@ -46,6 +46,15 @@ class CharacterEndpoint extends BaseEndpoint<Character> {
     );
   }
 
+  Future<QueryResult<Character>> bySeiyuu(String staffId, {int results = 100}) {
+    return query(
+      filters: ['seiyuu', '=', ['id', '=', staffId]],
+      fields: detailFields,
+      sort: 'name',
+      results: results,
+    );
+  }
+
   Future<QueryResult<Character>> byTrait(
     String traitId, {
     int page = 1,

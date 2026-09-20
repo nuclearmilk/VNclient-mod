@@ -62,17 +62,21 @@ class Staff {
 
 /// A VN credited to a staff member.
 class StaffVn {
-  const StaffVn({this.id = '', this.role = '', this.title = '', this.note});
+  const StaffVn({this.id = '', this.role = '', this.title = '', this.titleZh, this.titleJp, this.note});
 
   final String id;
   final String role;
   final String title;
+  final String? titleZh;
+  final String? titleJp;
   final String? note;
 
   factory StaffVn.fromJson(Map<String, dynamic> json) => StaffVn(
         id: json['id'] as String? ?? '',
         role: json['role'] as String? ?? '',
         title: json['title'] as String? ?? '',
+        titleZh: (json['titles'] as List?)?.cast<Map>().where((e) => e['lang'] == 'zh-Hans' || e['lang'] == 'zh-Hant' || e['lang'] == 'zh').map((e) => e['title']).whereType<String>().firstOrNull,
+        titleJp: (json['titles'] as List?)?.cast<Map>().where((e) => e['lang'] == 'ja').map((e) => e['title']).whereType<String>().firstOrNull,
         note: json['note'] as String?,
       );
 }

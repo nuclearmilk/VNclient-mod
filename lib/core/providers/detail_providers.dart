@@ -82,6 +82,17 @@ final vnsByStaffProvider =
   return ref.watch(vnEndpointProvider).byStaff(staffId);
 });
 
+final charactersBySeiyuuProvider =
+    FutureProvider.autoDispose.family<List<Character>, String>((ref, staffId) async {
+  final result = await ref.watch(characterEndpointProvider).bySeiyuu(staffId);
+  return result.results;
+});
+
+final voiceActorsByCharacterProvider =
+    FutureProvider.autoDispose.family<List<VnVaStaff>, String>((ref, characterId) {
+  return ref.watch(vnEndpointProvider).voiceActorsByCharacter(characterId);
+});
+
 /// The labels available to the current user.
 final userLabelsProvider =
     FutureProvider.autoDispose<List<UlistLabelDef>>((ref) async {
