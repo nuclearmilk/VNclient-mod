@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../constants/app_constants.dart';
 
@@ -44,10 +45,7 @@ class UpdateChecker {
   /// Normalize a version string by stripping leading "v" and splitting on ".".
   List<int> _parseVersion(String v) {
     final cleaned = v.trim().replaceAll(RegExp(r'^v'), '');
-    return cleaned
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
+    return cleaned.split('.').map((e) => int.tryParse(e) ?? 0).toList();
   }
 
   /// Compare two version strings.
@@ -66,8 +64,9 @@ class UpdateChecker {
 
   /// Fetches the latest release from GitHub and compares to the current version.
   Future<UpdateResult> check() async {
-    final current = AppConstants.appVersion;
+    var current = '未知';
     try {
+      current = (await PackageInfo.fromPlatform()).version;
       final response = await _dio.get<dynamic>(
         AppConstants.githubReleasesApi,
         options: Options(
@@ -118,4 +117,9 @@ final updateCheckerProvider = Provider<UpdateChecker>((ref) {
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
   )));
+});
+
+/// Reads the installed application's version generated from pubspec.yaml.
+final appVersionProvider = FutureProvider<String>((ref) async {
+  return (await PackageInfo.fromPlatform()).version;
 });

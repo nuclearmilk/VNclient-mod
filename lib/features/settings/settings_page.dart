@@ -125,8 +125,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onPressed: () {
               Navigator.pop(ctx);
               final url = result.releaseUrl ?? AppLinks.latestReleaseUrl;
-              launchUrl(Uri.parse(url),
-                  mode: LaunchMode.externalApplication);
+              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
             },
           ),
         ],
@@ -140,6 +139,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final l10n = ref.watch(l10nProvider);
     final theme = ref.watch(themeNotifierProvider);
     final locale = ref.watch(localeNotifierProvider);
+    final appVersion = ref.watch(appVersionProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.tr('settings'))),
@@ -159,7 +159,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 DropdownMenuItem(value: StartupPage.profile, child: Text('我的')),
               ],
               onChanged: (p) {
-                if (p != null) ref.read(themeNotifierProvider.notifier).setStartupPage(p);
+                if (p != null)
+                  ref.read(themeNotifierProvider.notifier).setStartupPage(p);
               },
             ),
           ),
@@ -172,9 +173,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             trailing: auth.isAuthenticated
                 ? TextButton(
                     onPressed: () async {
-                      await ref
-                          .read(authNotifierProvider.notifier)
-                          .logout();
+                      await ref.read(authNotifierProvider.notifier).logout();
                       if (context.mounted) context.go('/home');
                     },
                     child: Text(l10n.tr('logout')),
@@ -259,9 +258,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
               onChanged: (m) {
                 if (m != null) {
-                  ref
-                      .read(themeNotifierProvider.notifier)
-                      .setTitleDisplay(m);
+                  ref.read(themeNotifierProvider.notifier).setTitleDisplay(m);
                 }
               },
             ),
@@ -345,7 +342,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       icon: const Icon(Icons.open_in_browser),
                       label: Text(l10n.tr('openWebLogin')),
                       onPressed: () => context.push(
-                        '/webview?url=${Uri.encodeComponent("https://vndb.org/u/login")}&title=${Uri.encodeComponent(l10n.tr("signIn"))}'),
+                          '/webview?url=${Uri.encodeComponent("https://vndb.org/u/login")}&title=${Uri.encodeComponent(l10n.tr("signIn"))}'),
                     ),
                   ],
                 ),
@@ -357,7 +354,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('当前版本'),
-            subtitle: Text('v${AppConstants.appVersion}'),
+            subtitle: appVersion.when(
+              data: (version) => Text('v$version'),
+              loading: () => const Text('读取中…'),
+              error: (_, __) => const Text('未知'),
+            ),
           ),
           ListTile(
             leading: _checkingUpdate
@@ -373,12 +374,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('检查更新'),
             subtitle: _updateResult != null && _updateResult!.hasUpdate
                 ? Text('新版本可用: v${_updateResult!.latestVersion}',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary))
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.primary))
                 : null,
-            trailing: _checkingUpdate
-                ? null
-                : const Icon(Icons.chevron_right),
+            trailing: _checkingUpdate ? null : const Icon(Icons.chevron_right),
             onTap: _checkingUpdate ? null : _checkForUpdates,
           ),
           ListTile(
@@ -390,7 +389,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.code),
             title: const Text('GitHub'),
-subtitle: const Text('nuclearmilk/VNclient-mod'),
+            subtitle: const Text('nuclearmilk/VNclient-mod'),
             onTap: () => launchUrl(Uri.parse(AppLinks.github),
                 mode: LaunchMode.externalApplication),
           ),
@@ -574,8 +573,8 @@ subtitle: const Text('nuclearmilk/VNclient-mod'),
           child: bg.asset.isEmpty
               ? Container(
                   color: bg.seedColor,
-                  child: const Icon(Icons.texture,
-                      color: Colors.white, size: 20),
+                  child:
+                      const Icon(Icons.texture, color: Colors.white, size: 20),
                 )
               : Image.asset(bg.asset, fit: BoxFit.cover),
         ),
@@ -624,8 +623,7 @@ subtitle: const Text('nuclearmilk/VNclient-mod'),
     }
   }
 
-  String _brightnessLabel(Brightness b) =>
-      b == Brightness.dark ? '黑暗' : '明亮';
+  String _brightnessLabel(Brightness b) => b == Brightness.dark ? '黑暗' : '明亮';
 }
 
 class _ColorIndicator extends StatelessWidget {

@@ -8,9 +8,6 @@ class AppConstants {
   /// Base URL for the VNDB website (used for WebView and external links).
   static const String siteBaseUrl = 'https://vndb.org';
 
-  /// Current app version (keep in sync with pubspec.yaml).
-static const String appVersion = '1.3.8';
-
   /// GitHub releases API endpoint for update checking.
   static const String githubReleasesApi =
       'https://api.github.com/repos/nuclearmilk/VNclient-mod/releases/latest';

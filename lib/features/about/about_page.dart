@@ -49,7 +49,8 @@ class _AboutPageState extends ConsumerState<AboutPage> {
             if (result.releaseNotes != null &&
                 result.releaseNotes!.isNotEmpty) ...[
               const SizedBox(height: 12),
-              const Text('更新内容:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('更新内容:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
                 result.releaseNotes!,
@@ -81,6 +82,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
   @override
   Widget build(BuildContext context) {
+    final appVersion = ref.watch(appVersionProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('关于')),
       body: ListView(
@@ -94,10 +96,14 @@ class _AboutPageState extends ConsumerState<AboutPage> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
-          Text(
-            '版本 v${AppConstants.appVersion}',
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
+          appVersion.when(
+            data: (version) => Text(
+              '版本 v$version',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            loading: () => const Text('版本读取中…'),
+            error: (_, __) => const Text('版本未知'),
           ),
           const SizedBox(height: 16),
           FilledButton.tonalIcon(
@@ -121,7 +127,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
           const _AboutTile(
             icon: Icons.code,
             title: 'GitHub',
-subtitle: 'nuclearmilk/VNclient-mod',
+            subtitle: 'nuclearmilk/VNclient-mod',
             url: AppLinks.github,
           ),
           const _AboutTile(
@@ -175,7 +181,8 @@ class _AboutTile extends StatelessWidget {
       title: Text(title),
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.open_in_new),
-      onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onTap: () =>
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
     );
   }
 }
