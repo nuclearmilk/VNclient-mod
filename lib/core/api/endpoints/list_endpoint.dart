@@ -38,7 +38,11 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
     if (labelId != null) {
       filters = extraFilters == null
           ? ['label', '=', labelId]
-          : ['and', ['label', '=', labelId], extraFilters];
+          : [
+              'and',
+              ['label', '=', labelId],
+              extraFilters
+            ];
     } else {
       filters = extraFilters ?? [];
     }
@@ -59,7 +63,10 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
     String vnId,
   ) {
     return query(
-      filters: ['and', ['id', '=', vnId]],
+      filters: [
+        'and',
+        ['id', '=', vnId]
+      ],
       fields: listFields,
       sort: 'vote',
       results: 1,
@@ -85,6 +92,7 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
   Future<void> patchList(
     String vnId, {
     int? vote,
+    bool removeVote = false,
     String? notes,
     String? started,
     String? finished,
@@ -93,7 +101,13 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
     List<int>? labelsUnset,
   }) async {
     final body = <String, dynamic>{};
-    if (vote != null) body['vote'] = vote;
+    // A missing field means "leave unchanged" in VNDB's PATCH API.
+    // Send an explicit null when the user chooses to remove their vote.
+    if (removeVote) {
+      body['vote'] = null;
+    } else if (vote != null) {
+      body['vote'] = vote;
+    }
     if (notes != null) body['notes'] = notes;
     if (started != null) body['started'] = started;
     if (finished != null) body['finished'] = finished;

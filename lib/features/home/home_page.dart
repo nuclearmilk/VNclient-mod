@@ -134,17 +134,18 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             _DonationHeader(),
             _MenuGrid(),
-            const _StatsCard(),
-            const _RecentChangesSection(),
-            const _RecommendationsSection(),
-            const _TodayBirthdaysSection(),
-            const _ReleasesSection(),
             const _SiteLinksSection(),
             if (auth.isAuthenticated) ...[
               const _UserMenuSection(),
               const _EditorSection(),
             ] else
               const _SignInPrompt(),
+            const _RecentChangesSection(),
+            const _RecommendationsSection(),
+            const _TodayBirthdaysSection(),
+            const _ReleasesSection(showUpcoming: false, showJustReleased: true),
+            const _StatsCard(),
+            const _ReleasesSection(showUpcoming: true, showJustReleased: false),
             const _FooterSection(),
           ],
         ),
@@ -341,7 +342,8 @@ class _MenuGrid extends StatelessWidget {
                           e.label,
                           style: TextStyle(
                             fontSize: 9,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -368,8 +370,7 @@ class _StatsCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('数据库统计',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('数据库统计', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 16,
@@ -527,8 +528,7 @@ class _TodayBirthdaysSection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 itemCount: list.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, i) =>
-                    _BirthdayCard(character: list[i]),
+                itemBuilder: (context, i) => _BirthdayCard(character: list[i]),
               ),
             ),
           ],
@@ -668,7 +668,13 @@ class _VnCard extends StatelessWidget {
 }
 
 class _ReleasesSection extends ConsumerWidget {
-  const _ReleasesSection();
+  const _ReleasesSection({
+    required this.showUpcoming,
+    required this.showJustReleased,
+  });
+
+  final bool showUpcoming;
+  final bool showJustReleased;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -678,60 +684,64 @@ class _ReleasesSection extends ConsumerWidget {
       data: (d) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionHeader(
-            title: '即将发售',
-            icon: Icons.upcoming,
-            actionLabel: '更多',
-            onAction: () => context.push('/releases'),
-          ),
-          SizedBox(
-            height: 180,
-            child: d.upcoming.isEmpty
-                ? const Center(child: Text('暂无'))
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: d.upcoming.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, i) {
-                      final r = d.upcoming[i];
-                      return SizedBox(
-                        width: 160,
-                        child: ReleaseCard(
-                          release: r,
-                          onTap: () => context.push('/release/${r.id}'),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          SectionHeader(
-            title: '刚刚发售',
-            icon: Icons.new_releases,
-            actionLabel: '更多',
-            onAction: () => context.push('/releases'),
-          ),
-          SizedBox(
-            height: 180,
-            child: d.justReleased.isEmpty
-                ? const Center(child: Text('暂无'))
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: d.justReleased.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, i) {
-                      final r = d.justReleased[i];
-                      return SizedBox(
-                        width: 160,
-                        child: ReleaseCard(
-                          release: r,
-                          onTap: () => context.push('/release/${r.id}'),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+          if (showUpcoming) ...[
+            SectionHeader(
+              title: '即将发售',
+              icon: Icons.upcoming,
+              actionLabel: '更多',
+              onAction: () => context.push('/releases'),
+            ),
+            SizedBox(
+              height: 180,
+              child: d.upcoming.isEmpty
+                  ? const Center(child: Text('暂无'))
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: d.upcoming.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final r = d.upcoming[i];
+                        return SizedBox(
+                          width: 160,
+                          child: ReleaseCard(
+                            release: r,
+                            onTap: () => context.push('/release/${r.id}'),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+          if (showJustReleased) ...[
+            SectionHeader(
+              title: '刚刚发售',
+              icon: Icons.new_releases,
+              actionLabel: '更多',
+              onAction: () => context.push('/releases'),
+            ),
+            SizedBox(
+              height: 180,
+              child: d.justReleased.isEmpty
+                  ? const Center(child: Text('暂无'))
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: d.justReleased.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final r = d.justReleased[i];
+                        return SizedBox(
+                          width: 160,
+                          child: ReleaseCard(
+                            release: r,
+                            onTap: () => context.push('/release/${r.id}'),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ],
       ),
     );
@@ -798,7 +808,8 @@ class _UserMenuSection extends ConsumerWidget {
                 leading: const Icon(Icons.person),
                 title: Text('我的资料 (${user?.username ?? ""})'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => user != null ? openUserProfile(context, user.id) : null,
+                onTap: () =>
+                    user != null ? openUserProfile(context, user.id) : null,
               ),
               ListTile(
                 leading: const Icon(Icons.bookmark),
@@ -829,8 +840,8 @@ class _UserMenuSection extends ConsumerWidget {
                 title: const Text('我的最近更改'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => user != null
-                    ? openWebView(context,
-                        'https://vndb.org/${user.id}/hist', title: '我的最近更改')
+                    ? openWebView(context, 'https://vndb.org/${user.id}/hist',
+                        title: '我的最近更改')
                     : null,
               ),
               ListTile(
@@ -838,8 +849,8 @@ class _UserMenuSection extends ConsumerWidget {
                 title: const Text('我的标签'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => user != null
-                    ? openWebView(context,
-                        'https://vndb.org/${user.id}/tags', title: '我的标签')
+                    ? openWebView(context, 'https://vndb.org/${user.id}/tags',
+                        title: '我的标签')
                     : null,
               ),
             ],
@@ -917,8 +928,8 @@ class _FooterSection extends StatelessWidget {
             spacing: 12,
             children: [
               TextButton(
-                onPressed: () => openWebView(context, AppLinks.privacy,
-                    title: '隐私政策'),
+                onPressed: () =>
+                    openWebView(context, AppLinks.privacy, title: '隐私政策'),
                 child: const Text('隐私政策'),
               ),
               TextButton(

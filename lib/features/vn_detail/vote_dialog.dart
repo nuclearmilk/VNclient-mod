@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers/detail_providers.dart';
 import '../../core/providers/endpoints_provider.dart';
 
 /// A lightweight dialog for casting or updating a rating on a single VN.
@@ -20,7 +21,24 @@ class VoteDialog extends ConsumerStatefulWidget {
 
 class _VoteDialogState extends ConsumerState<VoteDialog> {
   double _vote = 7.0;
+  double? _myVote;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingVote();
+  }
+
+  Future<void> _loadExistingVote() async {
+    final entry = await ref.read(userVnListEntryProvider(widget.vnId).future);
+    if (!mounted || entry?.vote == null || entry!.vote! <= 0) return;
+    final rating = entry.vote! / 10.0;
+    setState(() {
+      _myVote = rating;
+      _vote = rating;
+    });
+  }
 
   Future<void> _submit() async {
     setState(() => _saving = true);
@@ -29,6 +47,7 @@ class _VoteDialogState extends ConsumerState<VoteDialog> {
             widget.vnId,
             vote: (_vote * 10).round(),
           );
+      ref.invalidate(userVnListEntryProvider(widget.vnId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('已投票 ${_vote.toStringAsFixed(1)} 分')),
@@ -49,7 +68,11 @@ class _VoteDialogState extends ConsumerState<VoteDialog> {
   Future<void> _removeVote() async {
     setState(() => _saving = true);
     try {
-      await ref.read(listEndpointProvider).patchList(widget.vnId, vote: null);
+      await ref.read(listEndpointProvider).patchList(
+            widget.vnId,
+            removeVote: true,
+          );
+      ref.invalidate(userVnListEntryProvider(widget.vnId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已撤销投票')),
@@ -91,6 +114,15 @@ class _VoteDialogState extends ConsumerState<VoteDialog> {
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Center(
+              child: Text(
+                _myVote == null
+                    ? '我的投票：未投票'
+                    : '我的投票：${_myVote!.toStringAsFixed(1)} / 10',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
             Slider(

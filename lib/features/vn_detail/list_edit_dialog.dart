@@ -26,6 +26,37 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
   bool _saving = false;
   bool _loaded = false; // 是否已从服务器预填
 
+  String _formatDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  void _prefillDate(TextEditingController controller, String? value) {
+    if (value == null || value.trim().isEmpty) return;
+    final date = DateTime.tryParse(value.trim());
+    if (date != null) controller.text = _formatDate(date);
+  }
+
+  Future<void> _pickDate(TextEditingController controller) async {
+    final current = DateTime.tryParse(controller.text);
+    final today = DateTime.now();
+    final initialDate = current ?? today;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(today.year + 10, 12, 31),
+      helpText: '选择日期',
+      cancelText: '取消',
+      confirmText: '确定',
+    );
+    if (picked != null && mounted) {
+      setState(() => controller.text = _formatDate(picked));
+    }
+  }
+
   @override
   void dispose() {
     _notesController.dispose();
@@ -48,8 +79,8 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
         _vote = (entry.vote! / 10).clamp(0.0, 10.0);
       }
       if (entry.notes != null) _notesController.text = entry.notes!;
-      if (entry.started != null) _startedController.text = entry.started!;
-      if (entry.finished != null) _finishedController.text = entry.finished!;
+      _prefillDate(_startedController, entry.started);
+      _prefillDate(_finishedController, entry.finished);
       _selectedLabels
         ..clear()
         ..addAll(entry.labels.where((l) => l.id != 0).map((l) => l.id));
@@ -220,17 +251,25 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
               const SizedBox(height: 8),
               TextField(
                 controller: _startedController,
+                readOnly: true,
+                onTap: () => _pickDate(_startedController),
                 decoration: const InputDecoration(
-                  labelText: '开始日期 (YYYY-MM-DD)',
+                  labelText: '开始日期',
+                  hintText: '点击选择日期',
                   isDense: true,
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _finishedController,
+                readOnly: true,
+                onTap: () => _pickDate(_finishedController),
                 decoration: const InputDecoration(
-                  labelText: '完成日期 (YYYY-MM-DD)',
+                  labelText: '完成日期',
+                  hintText: '点击选择日期',
                   isDense: true,
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
               ),
               const SizedBox(height: 12),
