@@ -113,8 +113,10 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
         labelsSet: toSet.isNotEmpty ? toSet : null,
         labelsUnset: toUnset.isNotEmpty ? toUnset : null,
       );
-      // 刷新当前 VN 的列表记录缓存。
+      // 刷新当前 VN 的列表记录缓存及各栏计数。
       ref.invalidate(userVnListEntryProvider(widget.vnId));
+      ref.invalidate(userLabelsProvider);
+      ref.invalidate(userListTotalCountProvider);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -150,6 +152,8 @@ class _ListEditDialogState extends ConsumerState<ListEditDialog> {
     try {
       await ref.read(listEndpointProvider).deleteList(widget.vnId);
       ref.invalidate(userVnListEntryProvider(widget.vnId));
+      ref.invalidate(userLabelsProvider);
+      ref.invalidate(userListTotalCountProvider);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {

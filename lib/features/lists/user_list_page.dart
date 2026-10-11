@@ -97,9 +97,20 @@ class UserListPage extends ConsumerWidget {
             6: '黑名单',
           };
 
+          // Per-label VN counts (from GET /ulist_labels with fields=count).
+          final countById = <int?, int>{
+            for (final l in apiLabels) l.id: l.count,
+          };
+          // Total entry count for the "全部" tab.
+          final totalCount = ref.watch(userListTotalCountProvider).valueOrNull;
+
+          String tabLabel(String label, int? labelId, int? count) =>
+              count == null ? label : '$label ($count)';
+
           for (final id in predefined) {
             tabs.add(_ListTab(
-              label: predefinedNames[id] ?? 'Label $id',
+              label: tabLabel(
+                  predefinedNames[id] ?? 'Label $id', id, countById[id]),
               labelId: id,
             ));
           }
@@ -108,7 +119,10 @@ class UserListPage extends ConsumerWidget {
           for (final l in apiLabels) {
             if (predefined.contains(l.id)) continue;
             if (l.id == 0) continue; // skip "no label"
-            tabs.add(_ListTab(label: l.label, labelId: l.id));
+            tabs.add(_ListTab(
+              label: tabLabel(l.label, l.id, l.count),
+              labelId: l.id,
+            ));
           }
 
           // Resolve initial index.
@@ -134,7 +148,14 @@ class UserListPage extends ConsumerWidget {
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
                   tabs: [
-                    for (final t in tabs) Tab(text: t.label),
+                    for (var i = 0; i < tabs.length; i++)
+                      Tab(
+                        text: i == 0
+                            ? (totalCount == null
+                                ? tabs[i].label
+                                : '${tabs[i].label} ($totalCount)')
+                            : tabs[i].label,
+                      ),
                   ],
                 ),
                 Expanded(

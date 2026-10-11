@@ -197,6 +197,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _termController.addListener(() {
+      if (mounted) setState(() {});
+    });
     if (widget.initialDeveloperId != null) {
       _target = SearchTarget.vn;
       _termController.clear();
@@ -547,48 +550,32 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _termController,
-                  decoration: InputDecoration(
-                    hintText: _searchHint(),
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.clear),
-                      tooltip: '清空',
-                      onPressed: () {
-                        _termController.clear();
-                        setState(() => _items.clear());
-                      },
-                    ),
-                  ),
-                  onSubmitted: (_) => _runSearch(),
-                ),
-                if (_target == SearchTarget.vn)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(
-                      icon: Icon(_showAdvanced ? Icons.expand_less : Icons.expand_more),
-                      tooltip: '高级筛选',
-                      onPressed: () => setState(() => _showAdvanced = !_showAdvanced),
-                    ),
-                  ),
-                if (_target == SearchTarget.character) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(
-                      icon: Icon(_showAdvanced
-                          ? Icons.expand_less
-                          : Icons.expand_more),
-                      tooltip: '高级筛选',
-                      onPressed: () => setState(
-                          () => _showAdvanced = !_showAdvanced),
-                    ),
-                  ),
-                ],
-              ],
+            child: TextField(
+              controller: _termController,
+              decoration: InputDecoration(
+                hintText: _searchHint(),
+                prefixIcon: _targetHasAdvanced()
+                    ? IconButton(
+                        icon: Icon(
+                          _showAdvanced ? Icons.expand_less : Icons.expand_more,
+                        ),
+                        tooltip: '高级筛选',
+                        onPressed: () =>
+                            setState(() => _showAdvanced = !_showAdvanced),
+                      )
+                    : const Icon(Icons.search),
+                suffixIcon: _termController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: '清空',
+                        onPressed: () {
+                          _termController.clear();
+                          setState(() => _items.clear());
+                        },
+                      )
+                    : null,
+              ),
+              onSubmitted: (_) => _runSearch(),
             ),
           ),
           if (_showAdvanced && _target == SearchTarget.vn)

@@ -48,6 +48,8 @@ class _VoteDialogState extends ConsumerState<VoteDialog> {
             vote: (_vote * 10).round(),
           );
       ref.invalidate(userVnListEntryProvider(widget.vnId));
+      ref.invalidate(userLabelsProvider);
+      ref.invalidate(userListTotalCountProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('已投票 ${_vote.toStringAsFixed(1)} 分')),
@@ -73,6 +75,8 @@ class _VoteDialogState extends ConsumerState<VoteDialog> {
             removeVote: true,
           );
       ref.invalidate(userVnListEntryProvider(widget.vnId));
+      ref.invalidate(userLabelsProvider);
+      ref.invalidate(userListTotalCountProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已撤销投票')),

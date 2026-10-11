@@ -63,16 +63,28 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
     String vnId,
   ) {
     return query(
-      filters: [
-        'and',
-        ['id', '=', vnId]
-      ],
+      filters: ['id', '=', vnId],
       fields: listFields,
       sort: 'vote',
       results: 1,
       page: 1,
       user: userId,
     );
+  }
+
+  /// 查询用户列表条目总数(用于"我的列表"各栏数量显示)。
+  /// [labelId] 为空时统计全部条目。
+  Future<int> getCount(String userId, {int? labelId}) async {
+    final result = await query(
+      filters: labelId == null ? [] : ['label', '=', labelId],
+      fields: 'id',
+      sort: 'vote',
+      results: 1,
+      page: 1,
+      user: userId,
+      count: true,
+    );
+    return result.count ?? 0;
   }
 
   /// Fetches the user's list labels.

@@ -188,9 +188,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.palette),
             title: Text(l10n.tr('seedColor')),
-            subtitle: theme.backgroundId != 'none'
-                ? const Text('跟随背景主题', style: TextStyle(fontSize: 11))
-                : null,
+            subtitle: theme.useCustomSeedColor
+                ? const Text('自定义颜色', style: TextStyle(fontSize: 11))
+                : theme.backgroundId != 'none'
+                    ? const Text('跟随背景主题',
+                        style: TextStyle(fontSize: 11))
+                    : null,
             trailing: _ColorIndicator(
               color: theme.effectiveSeedColor,
               onTap: () => _pickColor(context, theme.effectiveSeedColor),

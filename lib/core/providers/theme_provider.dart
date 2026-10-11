@@ -32,6 +32,7 @@ class ThemeSettings {
     this.customBackgroundPath,
     this.titleDisplay = TitleDisplayMode.romanized,
     this.startupPage = StartupPage.home,
+    this.useCustomSeedColor = false,
   });
 
   final Color seedColor;
@@ -51,14 +52,23 @@ class ThemeSettings {
   final TitleDisplayMode titleDisplay;
   final StartupPage startupPage;
 
+  /// When true, the user-picked [seedColor] overrides the background's own
+  /// seed color. Set to true by [ThemeNotifier.setSeedColor] so theming keeps
+  /// working after a custom background image is selected; reset when a
+  /// built-in background is chosen.
+  final bool useCustomSeedColor;
+
   /// Resolved background descriptor.
   AppBackground get background =>
       AppBackgrounds.byId(backgroundId, customPath: customBackgroundPath);
 
-  /// The effective seed color: when a background theme is active, follows the
-  /// background's seed color so the theme color matches the wallpaper.
-  Color get effectiveSeedColor =>
-      backgroundId == 'none' ? seedColor : background.seedColor;
+  /// The effective seed color: when the user has explicitly picked a color
+  /// (see [useCustomSeedColor]) it always wins; otherwise a background theme
+  /// follows the background's seed color so the theme matches the wallpaper.
+  Color get effectiveSeedColor {
+    if (useCustomSeedColor) return seedColor;
+    return backgroundId == 'none' ? seedColor : background.seedColor;
+  }
 
   ThemeSettings copyWith({
     Color? seedColor,
@@ -68,6 +78,7 @@ class ThemeSettings {
     String? customBackgroundPath,
     TitleDisplayMode? titleDisplay,
     StartupPage? startupPage,
+    bool? useCustomSeedColor,
   }) {
     return ThemeSettings(
       seedColor: seedColor ?? this.seedColor,
@@ -78,6 +89,7 @@ class ThemeSettings {
           customBackgroundPath ?? this.customBackgroundPath,
       titleDisplay: titleDisplay ?? this.titleDisplay,
       startupPage: startupPage ?? this.startupPage,
+      useCustomSeedColor: useCustomSeedColor ?? this.useCustomSeedColor,
     );
   }
 }
@@ -95,6 +107,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
   static const _keyCustomBg = 'theme_custom_bg_path';
   static const _keyTitleDisplay = 'theme_title_display';
   static const _keyStartupPage = 'startup_page';
+  static const _keyUseCustomSeed = 'theme_use_custom_seed';
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -105,6 +118,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
     final customBg = prefs.getString(_keyCustomBg);
     final titleStr = prefs.getString(_keyTitleDisplay);
     final startupStr = prefs.getString(_keyStartupPage);
+    final useCustomSeed = prefs.getBool(_keyUseCustomSeed);
     state = ThemeSettings(
       seedColor: seed == null
           ? const Color(0xFF325064)
@@ -128,13 +142,25 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
         'profile' => StartupPage.profile,
         _ => StartupPage.home,
       },
+      useCustomSeedColor: useCustomSeed ?? false,
     );
   }
 
+  /// Picks a custom seed color. This overrides the background theme's own
+  /// seed color so the choice keeps taking effect even when a (custom)
+  /// background image is active.
   Future<void> setSeedColor(Color color) async {
-    state = state.copyWith(seedColor: color);
+    state = state.copyWith(seedColor: color, useCustomSeedColor: true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keySeed, color.toARGB32());
+    await prefs.setBool(_keyUseCustomSeed, true);
+  }
+
+  /// Clears the manual seed color override and follows the background theme.
+  Future<void> clearSeedColorOverride() async {
+    state = state.copyWith(useCustomSeedColor: false);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyUseCustomSeed, false);
   }
 
   Future<void> setMode(ThemeMode mode) async {
@@ -155,10 +181,12 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
     state = state.copyWith(
       backgroundId: backgroundId,
       seedColor: bg.seedColor,
+      useCustomSeedColor: false,
     );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyBg, backgroundId);
     await prefs.setInt(_keySeed, bg.seedColor.toARGB32());
+    await prefs.setBool(_keyUseCustomSeed, false);
   }
 
   /// Sets a user-picked image file as the background. The file is copied into
