@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/theme_provider.dart';
-import '../core/theme/app_backgrounds.dart';
 
 /// Wraps [child] with a background wallpaper image when the user has selected
 /// one, otherwise renders [child] as-is. The image is painted behind a

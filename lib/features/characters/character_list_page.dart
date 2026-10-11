@@ -177,26 +177,6 @@ class _CharacterListPageState extends ConsumerState<CharacterListPage> {
     return ['and', ...parts];
   }
 
-  bool get _hasAdvancedFilters =>
-      _role != null ||
-      _bloodType != null ||
-      _sex != null ||
-      _gender != null ||
-      _cup != null ||
-      _heightMin != null ||
-      _heightMax != null ||
-      _weightMin != null ||
-      _weightMax != null ||
-      _bustMin != null ||
-      _waistMin != null ||
-      _hipsMin != null ||
-      _ageMin != null ||
-      _ageMax != null ||
-      _birthdayMonth != null ||
-      _traitController.text.trim().isNotEmpty ||
-      _seiyuuController.text.trim().isNotEmpty ||
-      _vnController.text.trim().isNotEmpty;
-
   Future<void> _fetch({bool reset = false}) async {
     if (_loading) return;
     if (reset) {

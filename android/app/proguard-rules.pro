@@ -1,0 +1,4 @@
+-dontwarn com.pichillilorenzo.flutter_inappwebview_android.**
+-keep class com.pichillilorenzo.flutter_inappwebview_android.** { *; }
+-dontwarn com.google.crypto.tink.**
+-keep class com.it_nomads.fluttersecurestorage.** { *; }

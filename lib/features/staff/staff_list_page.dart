@@ -30,7 +30,6 @@ class _StaffListPageState extends ConsumerState<StaffListPage> {
   String _role = ''; // staff_role or 'seiyuu'
   final _roleController = TextEditingController();
   final _extlinkController = TextEditingController(); // site name or URL
-  bool _ismain = true; // default to main only to deduplicate
 
   static const _langs = <_DropdownOption>[
     _DropdownOption(label: '全部', value: null),
@@ -101,12 +100,6 @@ class _StaffListPageState extends ConsumerState<StaffListPage> {
     if (parts.length == 1) return parts.first;
     return ['and', ...parts];
   }
-
-  bool get _hasAdvancedFilters =>
-      _lang != null ||
-      _gender != null ||
-      _role.isNotEmpty ||
-      _extlinkController.text.trim().isNotEmpty;
 
   Future<void> _fetch({bool reset = false}) async {
     if (_loading) return;

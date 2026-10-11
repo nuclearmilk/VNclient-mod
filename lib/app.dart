@@ -6,7 +6,6 @@ import 'core/providers/auth_provider.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
-import 'core/theme/app_backgrounds.dart';
 import 'core/theme/app_theme.dart';
 import 'widgets/themed_background.dart';
 

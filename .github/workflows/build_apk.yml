@@ -13,7 +13,7 @@ env:
   FLUTTER_VERSION: '3.29.3'
   JAVA_VERSION: '17'
   NDK_VERSION: '26.3.11579264'
-  APP_VERSION: '1.3.6'
+  APP_VERSION: '1.3.10'
 
 jobs:
   build:
@@ -25,13 +25,13 @@ jobs:
         include:
           - abi: armeabi-v7a
             target-platform: android-arm
-            artifact-name: VNclient-v1.3.6-android-armeabi-v7a.apk
+            artifact-name: VNclient-v1.3.10-android-armeabi-v7a.apk
           - abi: arm64-v8a
             target-platform: android-arm64
-            artifact-name: VNclient-v1.3.6-android-arm64-v8a.apk
+            artifact-name: VNclient-v1.3.10-android-arm64-v8a.apk
           - abi: x86-64
             target-platform: android-x64
-            artifact-name: VNclient-v1.3.6-android-x86-64.apk
+            artifact-name: VNclient-v1.3.10-android-x86-64.apk
 
     steps:
       - name: 拉取仓库代码
@@ -91,8 +91,7 @@ jobs:
           flutter build apk \
             --release \
             --target-platform ${{ matrix.target-platform }} \
-            --split-per-abi \
-            --no-tree-shake-icons
+            --split-per-abi
 
       - name: 重命名 APK 输出
         run: |
@@ -133,19 +132,19 @@ jobs:
           find apks -type f -name '*.apk' -exec cp {} staging/ \;
           ls -la staging/
           cd staging
-          zip -j "../VNclient-v1.3.6-android-apks.zip" \
-            VNclient-v1.3.6-android-armeabi-v7a.apk \
-            VNclient-v1.3.6-android-arm64-v8a.apk \
-            VNclient-v1.3.6-android-x86-64.apk
+          zip -j "../VNclient-v1.3.10-android-apks.zip" \
+            VNclient-v1.3.10-android-armeabi-v7a.apk \
+            VNclient-v1.3.10-android-arm64-v8a.apk \
+            VNclient-v1.3.10-android-x86-64.apk
           cd ..
-          ls -la VNclient-v1.3.6-android-apks.zip
-          unzip -l VNclient-v1.3.6-android-apks.zip
+          ls -la VNclient-v1.3.10-android-apks.zip
+          unzip -l VNclient-v1.3.10-android-apks.zip
 
       - name: 上传 APK 合并 zip 到工作流产物
         uses: actions/upload-artifact@v4
         with:
-          name: VNclient-v1.3.6-android-apks
-          path: VNclient-v1.3.6-android-apks.zip
+          name: VNclient-v1.3.10-android-apks
+          path: VNclient-v1.3.10-android-apks.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -162,16 +161,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p output
-          git archive --format=zip --prefix=VNclient-v1.3.6-src/ -o output/VNclient-v1.3.6-src.zip HEAD
+          git archive --format=zip --prefix=VNclient-v1.3.10-src/ -o output/VNclient-v1.3.10-src.zip HEAD
           cp CHANGELOG.md output/CHANGELOG.md || true
           ls -la output/
-          unzip -l output/VNclient-v1.3.6-src.zip | head -20
+          unzip -l output/VNclient-v1.3.10-src.zip | head -20
 
       - name: 上传源码 zip 到工作流产物
         uses: actions/upload-artifact@v4
         with:
-          name: VNclient-v1.3.6-src
-          path: output/VNclient-v1.3.6-src.zip
+          name: VNclient-v1.3.10-src
+          path: output/VNclient-v1.3.10-src.zip
           if-no-files-found: error
           retention-days: 30
 
