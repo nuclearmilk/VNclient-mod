@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/models/release.dart';
 import '../../core/models/character.dart';
 import '../../core/models/vn.dart';
+import '../../core/i18n/vndb_zh.dart';
 import '../../core/services/translation_service.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/detail_providers.dart';
@@ -971,7 +972,9 @@ class _CollapsibleTagsSectionState extends State<_CollapsibleTagsSection> {
                           ? const Icon(Icons.warning_amber,
                               size: 14)
                           : null),
-                  label: Text('${t.name} (${(t.rating as num).toStringAsFixed(1)})'),
+                  // 标签优先显示中文译名,无译名时回退英文原名。
+                  label: Text(
+                      '${VndbZh.tagShort(t.id as String, t.name as String)} (${(t.rating as num).toStringAsFixed(1)})'),
                   onPressed: () => context.push('/tag/${t.id}'),
                 );
               }).toList(),

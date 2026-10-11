@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/i18n/vndb_zh.dart';
 import '../../core/models/character.dart';
 import '../../core/providers/endpoints_provider.dart';
 import '../../core/providers/detail_providers.dart';
@@ -180,9 +181,12 @@ class _CharacterBody extends ConsumerWidget {
             spacing: 6,
             runSpacing: 6,
             children: character.traits.map((t) {
-              final group = t.groupName == null ? '' : ' (${t.groupName})';
+              final group = t.groupName == null
+                  ? ''
+                  : ' (${VndbZh.traitGroup(t.groupName)})';
               return ActionChip(
-                label: Text(t.name + group),
+                label: Text(
+                    VndbZh.traitShort(t.id, t.name) + group),
                 onPressed: () => context.push('/trait/${t.id}'),
               );
             }).toList(),
@@ -203,7 +207,7 @@ class _CharacterBody extends ConsumerWidget {
               dense: true,
               contentPadding: EdgeInsets.zero,
               title: Text(v.title),
-              subtitle: Text(v.role),
+              subtitle: Text(VndbZh.characterRole(v.role)),
               onTap: () => context.push('/vn/${v.id}'),
             ),
         ],

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/endpoints/character_endpoint.dart';
 import '../../core/api/endpoints/vn_endpoint.dart';
+import '../../core/i18n/vndb_zh.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/vn.dart';
 import '../../core/providers/endpoints_provider.dart';
@@ -1138,9 +1139,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       case SearchTarget.tag:
         return _GenericResultTile(
           leading: const CircleAvatar(child: Icon(Icons.label)),
-          title: item.name ?? '',
+          title: VndbZh.tagTitle(item.id ?? '', item.name ?? ''),
           subtitle: [
-            _tagCategoryLabel(item.category),
+            VndbZh.tagCategory(item.category),
             if (item.vn_count != null) '${item.vn_count} VN',
           ].join(' · '),
           onTap: () => context.push('/tag/${item.id}'),
@@ -1148,9 +1149,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       case SearchTarget.trait:
         return _GenericResultTile(
           leading: const CircleAvatar(child: Icon(Icons.category)),
-          title: item.name ?? '',
+          title: VndbZh.traitTitle(item.id ?? '', item.name ?? ''),
           subtitle: [
-            if (item.group_name != null) item.group_name,
+            if (item.group_name != null) VndbZh.traitGroup(item.group_name),
             if (item.char_count != null) '${item.char_count} 角色',
             if (item.sexual == true) '色情',
           ].join(' · '),
@@ -1167,19 +1168,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         return '个人';
       case 'ng':
         return '业余组';
-      default:
-        return '';
-    }
-  }
-
-  String _tagCategoryLabel(String? category) {
-    switch (category) {
-      case 'cont':
-        return '内容';
-      case 'tech':
-        return '技术';
-      case 'ero':
-        return '色情';
       default:
         return '';
     }
