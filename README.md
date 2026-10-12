@@ -1,104 +1,150 @@
-# VNDB App
+# VNclient-mod
 
 [English](./readme-en.md)
 
-## 部分代码由 AI 生成。
+一款用于 [VNDB](https://vndb.org/)（Visual Novel Database，视觉小说数据库）的第三方 Flutter 客户端，基于 [sunxibing114514/VNclient](https://github.com/sunxibing114514/VNclient) 维护与深度定制，采用现代 Material Design 3 界面复刻并增强网站核心功能。
 
-一款用于 [VNDB](https://vndb.org/)（Visual Novel Database，视觉小说数据库）的 Flutter 客户端，采用现代 Material Design 3 界面复刻网站功能。
+> 注：本项目部分代码由 AI 辅助生成与重构。
 
-## 功能特性
+---
 
-- **首页** - 最新发布、随机视觉小说和最近变更
-- **视觉小说详情** - 完整信息，包括开发商、发行商、标签、角色、制作人员、截图和发行版本
-- **制作商** - 点击开发商/发行商查看其详情页面
-- **制作人员分类** - 按职位查看制作人员（剧本、美术、作曲、配音等）
-- **可折叠区域** - 制作人员和发行版本区域可展开/折叠
-- **制作人员作品** - 查看某位制作人员参与过的所有视觉小说
-- **用户列表** - 通过全部/评分/愿望单标签管理你的视觉小说收藏
-- **搜索** - 在用户列表内搜索
-- **M3 设计** - 采用 Material Design 3，支持自定义强调色
-- **语言切换** - 支持简体中文和英文
-- **深色模式** - 自动跟随系统主题
+## ✨ 功能特性
 
-## 技术栈
+### 1. 视觉小说（VN）详情与浏览
+- **完整作品信息**：涵盖开发商、发行商、关系作品、标签（支持内容/技术/色情分类与剧透等级过滤）、出场角色、制作人员（按剧本/美术/音乐/配音等职位折叠展示）、发行版本、截图预览与外部链接。
+- **简介智能翻译（人工优先）**：点击简介区「翻译」按钮时，优先查询并展示 `vndbtran` 社区人工汉化简介；未命中时自动回退至 MyMemory 机器翻译，并在下方清晰标注翻译来源。
+- **贝叶斯评分与直接投票**：展示官方贝叶斯评分、排名与投票分布；已登录用户可在详情页直接弹窗打分（实时显示「我的投票」当前分数，支持提交、修改与撤销投票）。
+- **浏览历史**：自动记录最近浏览的 VN 作品（本地持久化），支持左滑单条删除与一键清空。
+
+### 2. 角色、声优与制作方体验优化（Mod 定制增强）
+- **角色与声优日文名优先**：
+  - 角色详情页优先展示日文原名，英文/罗马音作为副标题，且日文名与英文名均支持长按复制。
+  - 角色卡片与详情页中的配音声优仅优先显示日文名，避免多语言并列造成排版拥挤；点击声优可直接跳转至该声优的制作人员（Staff）详情页。
+  - 声优/制作人员详情页以日文名为主标题、其他语言为副标题，其参与作品、歌曲与配音角色均按语言优先级展示。
+- **制作方作品内嵌浏览**：在制作商（Producer）详情页直接内嵌分页加载该制作方的全部相关作品，无需跳转外部网页或搜索页。
+- **制作商关注与新作提醒**：支持关注任意制作商，应用启动及下拉刷新时自动检测已关注制作商的新作，并在首页右上角消息中心红点提醒。
+
+### 3. 标签 / 特征与界面本地化
+- **约 400 项常用标签与特征中文化**：内置社区术语人工翻译词典，在 VN 详情页标签徽章、角色详情页特征徽章、标签/特征列表与详情页以及搜索结果中均优先显示中文（支持中英双语对照）。
+- **多语言界面与标题偏好**：界面支持 **简体中文 / 英语 / 日语** 三语切换；作品标题支持在设置中选择 **罗马音优先** 或 **日文/原名优先**。
+
+### 4. 搜索与随机探索
+- **全能多目标搜索**：支持在 **VN 作品、角色、制作商、制作人员、发行版本、标签、特质** 7 类目标间切换搜索。
+- **VN 与角色高级筛选面板**：
+  - **VN 筛选**：语言、平台（含 PC-98/PC-88 等）、发行年份区间、最低贝叶斯评分、标签 ID、开发商及 6 种排序方式。
+  - **角色筛选**：角色定位、血型、性别、罩杯、身高/体重/三围/年龄区间、生日月份、特质 ID、声优 ID、关联 VN ID 等。
+- **搜索框交互精简**：搜索框最左侧集成「高级筛选」展开/收起按钮，右侧清空按钮（`×`）仅在输入文字后动态显示。
+- **多条件随机 VN**：支持按语言、平台、标签、最低评分、年份、R18、免费与游戏引擎组合抽取随机作品。
+
+### 5. 首页与「我的列表」管理
+- **首页高效布局**：顶部优先展示「站点与社区」九宫格导航及登录用户快捷菜单，下方依次呈现「最近更改、猜你喜欢（基于收藏/通关标签智能推荐）、今日生日角色、刚刚发售、即将发售、数据库统计」与底部随机名言。
+- **我的列表数量统计**：列表页顶部栏（包括「全部」、游玩中/已完成/搁置/弃坑/愿望单等预设状态及自定义标签分组）均实时统计并显示对应的 VN 作品数量，并支持列表内搜索与高级筛选。
+- **规范化日期选择器**：编辑列表条目的「开始日期」与「完成日期」采用原生日期选择器（统一保存为 `YYYY-MM-DD`），避免手动输入格式错误。
+
+### 6. 个性化主题与版本更新
+- **Material Design 3 与自定义背景**：支持深色/浅色/跟随系统模式，内置多款经典视觉小说壁纸，并支持从相册选取**自定义背景图**；在启用自定义背景图时依然可自由切换主题强调色。
+- **动态版本管理与更新检查**：应用版本号自动从安装包元数据（`package_info_plus`）读取，支持在设置页一键检查 GitHub Release 最新版本。
+
+---
+
+## 🛠 技术栈
 
 - **框架**：Flutter 3.x
-- **状态管理**：Riverpod 2
-- **路由**：Go Router
-- **网络请求**：Dio
-- **图片缓存**：Cached Network Image
-- **本地化**：Flutter Localizations
-- **安全存储**：Flutter Secure Storage
-- **应用内浏览器**：Flutter InAppWebView
+- **状态管理**：Riverpod 2 (`flutter_riverpod`)
+- **路由管理**：Go Router (`go_router`)
+- **网络请求**：Dio (`dio`)
+- **图片缓存与矢量图**：`cached_network_image`、`flutter_svg`
+- **本地与安全存储**：`shared_preferences`、`flutter_secure_storage`
+- **系统集成与工具**：`flutter_inappwebview`、`url_launcher`、`image_picker`、`path_provider`、`package_info_plus`
 
-## 开始使用
+---
+
+## 🚀 开始使用
 
 ### 环境要求
 
-- Flutter SDK >= 3.0.0
-- Android SDK（用于 Android 开发）
-- VNDB 账号（用于需要登录的功能）
+- Flutter SDK `>= 3.0.0 < 4.0.0`
+- Android SDK / JDK 17（用于 Android 构建）
+- VNDB 账号（用于个人列表管理、投票评分等需要鉴权的功能）
 
-### 安装
+### 克隆与构建
 
 ```bash
 # 克隆仓库
-git clone https://github.com/sunxibing114514/VNclient.git
-cd vndb_app
+git clone https://github.com/nuclearmilk/VNclient-mod.git
+cd VNclient-mod
 
 # 安装依赖
 flutter pub get
 
-# 构建应用
+# 构建通用单包 Release APK（含全架构）
+flutter build apk --release
+
+# 或按 CPU 架构分包构建（体积更小）
 flutter build apk --release --split-per-abi
 ```
 
-### 运行
+### 开发运行
 
 ```bash
-# 开发模式
+# 调试模式运行
 flutter run
 
-# 发布模式（Android）
+# 发布模式运行
 flutter run --release
 ```
 
-## API 使用
+---
 
-本应用使用 [VNDB Kana API](https://api.vndb.org/kana) 获取数据。认证通过存储在设备上的 API 密钥完成。
+## 📂 项目结构
 
-## 项目结构
-
-```
+```text
 lib/
-├── core/                  # 核心功能
-│   ├── api/               # VNDB API 客户端和接口
-│   ├── models/            # 数据模型
-│   ├── providers/         # Riverpod 状态提供者
-│   ├── router/            # Go Router 路由配置
-│   ├── theme/             # 应用主题配置
-│   └── l10n/              # 本地化字符串
-├── features/              # 功能模块
+├── core/                  # 核心基础层
+│   ├── api/               # VNDB Kana API 客户端与各端点封装
+│   ├── constants/         # 站点与通用常量配置
+│   ├── i18n/              # 标签 (Tag) 与特征 (Trait) 中文术语词典
+│   ├── l10n/              # 界面多语言本地化 (中/英/日)
+│   ├── models/            # 数据模型定义
+│   ├── providers/         # Riverpod 全局与详情状态提供者
+│   ├── router/            # Go Router 路由表配置
+│   ├── services/          # 翻译服务 (vndbtran/MyMemory)、更新检测与标题解析
+│   └── theme/             # Material 3 主题与背景壁纸配置
+├── features/              # 业务功能模块
+│   ├── about/             # 关于页面
+│   ├── characters/        # 角色列表与详情页
+│   ├── follows/           # 关注的制作商管理
+│   ├── history/           # 本地浏览历史
 │   ├── home/              # 首页
-│   ├── vn_detail/         # 视觉小说详情页
-│   ├── lists/             # 用户列表页
-│   ├── staff/             # 制作人员页面
-│   ├── producers/         # 制作商页面
-│   ├── characters/        # 角色页面
-│   ├── tags/              # 标签页面
-│   ├── search/            # 搜索页面
+│   ├── lists/             # 用户收藏列表页
+│   ├── login/             # 登录与 Token 认证页
+│   ├── notifications/     # 制作商新作消息中心
+│   ├── producers/         # 制作商列表与内嵌作品详情页
+│   ├── quotes/            # 名言展示
+│   ├── random/            # 多条件随机 VN 抽取页
+│   ├── releases/          # 发行版本详情页
+│   ├── search/            # 多目标聚合搜索与高级筛选页
 │   ├── settings/          # 设置页面
-│   └── login/             # 登录页面
-├── widgets/               # 可复用组件
+│   ├── staff/             # 制作人员与声优列表/详情页
+│   ├── tags/              # 标签列表与详情页
+│   ├── traits/            # 角色特征列表与详情页
+│   ├── users/             # 用户查询页
+│   ├── vn_detail/         # 视觉小说详情、列表编辑弹窗与投票弹窗
+│   └── webview/           # 应用内网页浏览
+├── widgets/               # 通用可复用 UI 组件
 ├── app.dart               # 根应用组件
-└── main.dart              # 入口文件
+└── main.dart              # 应用入口文件
 ```
 
-## 特别感谢
+---
 
-- 曾经的背景图来自 [daniel-c-j/vndb-lite](https://github.com/daniel-c-j/vndb-lite)
-- 感谢 [VNDB Kana API](https://api.vndb.org/kana) 提供的 API 文档与背景图
+## 🙏 致谢
 
-## 许可证
+- 原项目基础架构来自 [sunxibing114514/VNclient](https://github.com/sunxibing114514/VNclient)
+- 数据接口与文档由 [VNDB Kana API](https://api.vndb.org/kana) 提供
+- 人工汉化简介数据源来自 `vndbtran` 社区项目
+- 部分早期背景图资源来自 [daniel-c-j/vndb-lite](https://github.com/daniel-c-j/vndb-lite)
 
-Apache-2.0 license
+## 📄 许可证
+
+本项目基于 [Apache-2.0 License](./LICENSE) 开源。
