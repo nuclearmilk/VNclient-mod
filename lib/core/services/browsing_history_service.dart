@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
+import '../providers/prefs_provider.dart';
 
 /// A browsing history entry: a VN id plus the timestamp it was viewed.
 class HistoryEntry {
@@ -35,26 +36,25 @@ class HistoryEntry {
 /// called which moves the entry to the front (most-recent-first order),
 /// deduplicates, and trims to [AppConstants.browsingHistoryLimit].
 class BrowsingHistoryService extends StateNotifier<List<HistoryEntry>> {
-  BrowsingHistoryService() : super(const []) {
-    _loadFuture = _load();
-  }
+  BrowsingHistoryService(this._prefs) : super(_readInitial(_prefs));
 
-  SharedPreferences? _prefs;
-  late final Future<void> _loadFuture;
+  final SharedPreferences _prefs;
 
-  Future<void> _load() async {
-    _prefs = await SharedPreferences.getInstance();
-    final raw = _prefs!.getString(AppConstants.browsingHistoryKey);
-    if (raw != null) {
+  static List<HistoryEntry> _readInitial(SharedPreferences prefs) {
+    final raw = prefs.getString(AppConstants.browsingHistoryKey);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
       final list = jsonDecode(raw) as List;
-      state = list
+      return list
           .map((e) => HistoryEntry.fromJson(e as Map<String, dynamic>))
           .toList();
+    } catch (_) {
+      return const [];
     }
   }
 
   Future<void> _persist() async {
-    await _prefs?.setString(
+    await _prefs.setString(
       AppConstants.browsingHistoryKey,
       jsonEncode(state.map((e) => e.toJson()).toList()),
     );
@@ -62,8 +62,6 @@ class BrowsingHistoryService extends StateNotifier<List<HistoryEntry>> {
 
   /// Records a VN view, moving it to the front of the history list.
   Future<void> record(String vnId) async {
-    // Ensure the initial load has finished so we don't overwrite it.
-    await _loadFuture;
     final now = DateTime.now().millisecondsSinceEpoch;
     final filtered =
         state.where((e) => e.vnId != vnId).toList(growable: true);
@@ -79,14 +77,12 @@ class BrowsingHistoryService extends StateNotifier<List<HistoryEntry>> {
 
   /// Removes a single entry from the history.
   Future<void> remove(String vnId) async {
-    await _loadFuture;
     state = state.where((e) => e.vnId != vnId).toList();
     await _persist();
   }
 
   /// Clears the entire history.
   Future<void> clear() async {
-    await _loadFuture;
     state = const [];
     await _persist();
   }
@@ -94,5 +90,5 @@ class BrowsingHistoryService extends StateNotifier<List<HistoryEntry>> {
 
 final browsingHistoryProvider =
     StateNotifierProvider<BrowsingHistoryService, List<HistoryEntry>>((ref) {
-  return BrowsingHistoryService();
+  return BrowsingHistoryService(ref.watch(sharedPreferencesProvider));
 });

@@ -12,7 +12,7 @@ class VnEndpoint extends BaseEndpoint<Vn> {
 
   /// Fields used for list/search views.
   static const String listFields =
-      'title, alttitle, released, image{id,url,thumbnail,thumbnail_dims,sexual,violence},'
+      'title, alttitle, titles{lang,title,main}, released, image{id,url,thumbnail,thumbnail_dims,sexual,violence},'
       'languages, platforms, devstatus, rating, votecount, length, length_minutes';
 
   /// Full set of fields used on the VN detail page.
@@ -236,6 +236,18 @@ class VnEndpoint extends BaseEndpoint<Vn> {
       results: limit,
       page: 1,
     );
+  }
+
+  /// Raw response for recently added VNs (for SWR caching).
+  Future<Map<String, dynamic>> getRecentRaw({int limit = 10}) {
+    final params = QueryParams(
+      fields: listFields,
+      sort: 'id',
+      reverse: true,
+      results: limit,
+      page: 1,
+    );
+    return client.post(path, body: params.toJson());
   }
 
   /// Returns VNs credited to a given staff member (identified by staff id

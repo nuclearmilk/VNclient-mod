@@ -16,7 +16,7 @@ class VndbApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final auth = ref.watch(authNotifierProvider);
+    final authStatus = ref.watch(authNotifierProvider.select((s) => s.status));
     final theme = ref.watch(themeNotifierProvider);
     final locale = ref.watch(localeNotifierProvider);
 
@@ -34,9 +34,8 @@ class VndbApp extends ConsumerWidget {
         ? (bg.isDark ? ThemeMode.dark : ThemeMode.light)
         : theme.mode;
 
-    // While the persisted token is being validated, show a splash.
-    if (auth.status == AuthStatus.unknown ||
-        auth.status == AuthStatus.loading) {
+    // Only block with a splash if auth state is genuinely unknown.
+    if (authStatus == AuthStatus.unknown) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: darkTheme,

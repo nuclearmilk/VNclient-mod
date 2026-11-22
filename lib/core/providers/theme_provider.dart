@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../theme/app_backgrounds.dart';
+import 'prefs_provider.dart';
 
 /// How a VN's title should be displayed in lists and detail pages.
 enum TitleDisplayMode {
@@ -96,9 +97,9 @@ class ThemeSettings {
 
 /// State notifier that persists theme settings via [SharedPreferences].
 class ThemeNotifier extends StateNotifier<ThemeSettings> {
-  ThemeNotifier() : super(const ThemeSettings()) {
-    _load();
-  }
+  ThemeNotifier(this._prefs) : super(_readInitial(_prefs));
+
+  final SharedPreferences _prefs;
 
   static const _keySeed = 'theme_seed_color';
   static const _keyMode = 'theme_mode';
@@ -109,8 +110,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
   static const _keyStartupPage = 'startup_page';
   static const _keyUseCustomSeed = 'theme_use_custom_seed';
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+  static ThemeSettings _readInitial(SharedPreferences prefs) {
     final seed = prefs.getInt(_keySeed);
     final modeStr = prefs.getString(_keyMode);
     final bgId = prefs.getString(_keyBg);
@@ -119,7 +119,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
     final titleStr = prefs.getString(_keyTitleDisplay);
     final startupStr = prefs.getString(_keyStartupPage);
     final useCustomSeed = prefs.getBool(_keyUseCustomSeed);
-    state = ThemeSettings(
+    return ThemeSettings(
       seedColor: seed == null
           ? const Color(0xFF325064)
           : Color(seed).withValues(alpha: 1.0),
@@ -151,22 +151,19 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
   /// background image is active.
   Future<void> setSeedColor(Color color) async {
     state = state.copyWith(seedColor: color, useCustomSeedColor: true);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keySeed, color.toARGB32());
-    await prefs.setBool(_keyUseCustomSeed, true);
+    await _prefs.setInt(_keySeed, color.toARGB32());
+    await _prefs.setBool(_keyUseCustomSeed, true);
   }
 
   /// Clears the manual seed color override and follows the background theme.
   Future<void> clearSeedColorOverride() async {
     state = state.copyWith(useCustomSeedColor: false);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyUseCustomSeed, false);
+    await _prefs.setBool(_keyUseCustomSeed, false);
   }
 
   Future<void> setMode(ThemeMode mode) async {
     state = state.copyWith(mode: mode);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _prefs.setString(
       _keyMode,
       switch (mode) {
         ThemeMode.light => 'light',
@@ -183,10 +180,9 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
       seedColor: bg.seedColor,
       useCustomSeedColor: false,
     );
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyBg, backgroundId);
-    await prefs.setInt(_keySeed, bg.seedColor.toARGB32());
-    await prefs.setBool(_keyUseCustomSeed, false);
+    await _prefs.setString(_keyBg, backgroundId);
+    await _prefs.setInt(_keySeed, bg.seedColor.toARGB32());
+    await _prefs.setBool(_keyUseCustomSeed, false);
   }
 
   /// Sets a user-picked image file as the background. The file is copied into
@@ -200,21 +196,18 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
       backgroundId: 'custom',
       customBackgroundPath: destPath,
     );
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyBg, 'custom');
-    await prefs.setString(_keyCustomBg, destPath);
+    await _prefs.setString(_keyBg, 'custom');
+    await _prefs.setString(_keyCustomBg, destPath);
   }
 
   Future<void> setBlurNsfw(bool value) async {
     state = state.copyWith(blurNsfw: value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyBlur, value);
+    await _prefs.setBool(_keyBlur, value);
   }
 
   Future<void> setTitleDisplay(TitleDisplayMode mode) async {
     state = state.copyWith(titleDisplay: mode);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _prefs.setString(
       _keyTitleDisplay,
       switch (mode) {
         TitleDisplayMode.romanized => 'romanized',
@@ -226,8 +219,7 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
 
   Future<void> setStartupPage(StartupPage page) async {
     state = state.copyWith(startupPage: page);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyStartupPage, page.name);
+    await _prefs.setString(_keyStartupPage, page.name);
   }
 
   String _ext(String path) {
@@ -238,5 +230,5 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
 
 final themeNotifierProvider =
     StateNotifierProvider<ThemeNotifier, ThemeSettings>((ref) {
-  return ThemeNotifier();
+  return ThemeNotifier(ref.watch(sharedPreferencesProvider));
 });

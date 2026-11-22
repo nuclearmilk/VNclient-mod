@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/endpoints/vn_endpoint.dart';
+import '../constants/app_constants.dart';
 import '../models/character.dart';
 import '../models/list_entry.dart';
 import '../models/query_result.dart';
@@ -8,11 +9,22 @@ import '../models/release.dart';
 import '../models/staff.dart';
 import '../models/vn.dart';
 import 'auth_provider.dart';
+import 'cache_utils.dart';
 import 'endpoints_provider.dart';
+import 'prefs_provider.dart';
+
+String _todayDateKey() {
+  final now = DateTime.now();
+  final y = now.year.toString();
+  final m = now.month.toString().padLeft(2, '0');
+  final d = now.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}
 
 /// Fetches a single VN by id.
 final vnDetailProvider =
     FutureProvider.autoDispose.family<Vn, String>((ref, id) {
+  keepAliveFor(ref, const Duration(minutes: 5));
   return ref.watch(vnEndpointProvider).getById(id);
 });
 
@@ -20,6 +32,7 @@ final vnDetailProvider =
 /// higher rating plus one. Returns null when the VN has no rating.
 final vnRatingRankProvider =
     FutureProvider.autoDispose.family<int?, String>((ref, vnId) async {
+  keepAliveFor(ref, const Duration(minutes: 5));
   final vn = await ref.watch(vnDetailProvider(vnId).future);
   if (vn.rating == null) return null;
   // Count VNs with a strictly higher Bayesian rating.
@@ -39,9 +52,8 @@ final vnRatingRankProvider =
 /// 用于"加入列表"对话框预填已有 vote / notes / labels。
 final userVnListEntryProvider =
     FutureProvider.autoDispose.family<UlistEntry?, String>((ref, vnId) async {
-  final auth = ref.watch(authNotifierProvider);
-  final userId = auth.user?.id;
-  if (!auth.isAuthenticated || userId == null) return null;
+  final userId = ref.watch(authNotifierProvider.select((s) => s.user?.id));
+  if (userId == null) return null;
   try {
     final result =
         await ref.watch(listEndpointProvider).getEntry(userId, vnId);
@@ -51,19 +63,32 @@ final userVnListEntryProvider =
   }
 });
 
-/// 今日生日的角色列表。
-final todayBirthdaysProvider =
-    FutureProvider.autoDispose<List<Character>>((ref) async {
-  final now = DateTime.now();
-  final result = await ref
-      .watch(characterEndpointProvider)
-      .byBirthday(now.month, now.day, results: 30);
-  return result.results;
+/// 今日生日的角色列表（按日缓存，同一自然日冷启动跳过重复请求）。
+final todayBirthdaysProvider = StateNotifierProvider.autoDispose<
+    SwrNotifier<List<Character>>, AsyncValue<List<Character>>>((ref) {
+  keepAliveFor(ref, const Duration(minutes: 15));
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final endpoint = ref.watch(characterEndpointProvider);
+  return SwrNotifier<List<Character>>(
+    prefs: prefs,
+    cacheKey: AppConstants.cacheTodayBirthdaysKey,
+    fetcher: () {
+      final now = DateTime.now();
+      return endpoint.byBirthdayRaw(now.month, now.day, results: 30);
+    },
+    parser: (json) => QueryResult.fromJson(json, Character.fromJson).results,
+    shouldSkipInitialRefresh: (p) =>
+        p.getString(AppConstants.cacheTodayBirthdaysDateKey) == _todayDateKey(),
+    onCacheSaved: (p) {
+      p.setString(AppConstants.cacheTodayBirthdaysDateKey, _todayDateKey());
+    },
+  );
 });
 
 /// Releases linked to a VN.
 final releasesByVnProvider =
     FutureProvider.autoDispose.family<List<Release>, String>((ref, vnId) async {
+  keepAliveFor(ref, const Duration(minutes: 5));
   final result = await ref.watch(releaseEndpointProvider).byVn(vnId);
   return result.results;
 });
@@ -71,6 +96,7 @@ final releasesByVnProvider =
 /// Characters linked to a VN.
 final charactersByVnProvider =
     FutureProvider.autoDispose.family<List<Character>, String>((ref, vnId) async {
+  keepAliveFor(ref, const Duration(minutes: 5));
   final result = await ref.watch(characterEndpointProvider).byVn(vnId);
   return result.results;
 });
@@ -79,35 +105,57 @@ final charactersByVnProvider =
 /// Keyed by the staff id (sid string, e.g. `s81`).
 final vnsByStaffProvider =
     FutureProvider.autoDispose.family<List<StaffVn>, String>((ref, staffId) {
+  keepAliveFor(ref, const Duration(minutes: 5));
   return ref.watch(vnEndpointProvider).byStaff(staffId);
 });
 
 final charactersBySeiyuuProvider =
     FutureProvider.autoDispose.family<List<Character>, String>((ref, staffId) async {
+  keepAliveFor(ref, const Duration(minutes: 5));
   final result = await ref.watch(characterEndpointProvider).bySeiyuu(staffId);
   return result.results;
 });
 
 final voiceActorsByCharacterProvider =
     FutureProvider.autoDispose.family<List<VnVaStaff>, String>((ref, characterId) {
+  keepAliveFor(ref, const Duration(minutes: 5));
   return ref.watch(vnEndpointProvider).voiceActorsByCharacter(characterId);
 });
 
-/// The labels available to the current user.
-final userLabelsProvider =
-    FutureProvider.autoDispose<List<UlistLabelDef>>((ref) async {
-  final auth = ref.watch(authNotifierProvider);
-  final userId = auth.user?.id;
-  if (userId == null) return [];
-  return ref.watch(listEndpointProvider).getLabels(userId);
+/// The labels available to the current user (SWR cached per user).
+final userLabelsProvider = StateNotifierProvider.autoDispose<
+    SwrNotifier<List<UlistLabelDef>>, AsyncValue<List<UlistLabelDef>>>((ref) {
+  keepAliveFor(ref, const Duration(minutes: 10));
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final userId = ref.watch(authNotifierProvider.select((s) => s.user?.id));
+  final endpoint = ref.watch(listEndpointProvider);
+
+  if (userId == null) {
+    return SwrNotifier<List<UlistLabelDef>>(
+      prefs: prefs,
+      cacheKey: '${AppConstants.cacheUserLabelsPrefix}guest',
+      fetcher: () async => const <String, dynamic>{'labels': []},
+      parser: (_) => const <UlistLabelDef>[],
+      shouldSkipInitialRefresh: (_) => true,
+    );
+  }
+
+  return SwrNotifier<List<UlistLabelDef>>(
+    prefs: prefs,
+    cacheKey: '${AppConstants.cacheUserLabelsPrefix}$userId',
+    fetcher: () => endpoint.getLabelsRaw(userId),
+    parser: (json) => (json['labels'] as List? ?? [])
+        .map((e) => UlistLabelDef.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 });
 
 /// Total number of entries in the current user's VN list (all labels),
 /// used for the "全部" tab count. Returns null when unavailable.
 final userListTotalCountProvider =
     FutureProvider.autoDispose<int?>((ref) async {
-  final auth = ref.watch(authNotifierProvider);
-  final userId = auth.user?.id;
+  keepAliveFor(ref, const Duration(minutes: 10));
+  final userId = ref.watch(authNotifierProvider.select((s) => s.user?.id));
   if (userId == null) return null;
   try {
     return await ref.watch(listEndpointProvider).getCount(userId);
@@ -119,8 +167,7 @@ final userListTotalCountProvider =
 /// Fetches the current user's list with an optional label filter.
 final userListProvider = FutureProvider.autoDispose
     .family<QueryResult<UlistEntry>, UserListQuery>((ref, query) {
-  final auth = ref.watch(authNotifierProvider);
-  final userId = auth.user?.id;
+  final userId = ref.watch(authNotifierProvider.select((s) => s.user?.id));
   if (userId == null) {
     throw StateError('Not authenticated');
   }

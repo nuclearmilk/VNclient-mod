@@ -43,6 +43,20 @@ class AppBackground {
   /// Resolves the actual image source: a file path for custom backgrounds,
   /// otherwise the bundled asset.
   String get imageSource => customPath ?? asset;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppBackground &&
+          other.id == id &&
+          other.asset == asset &&
+          other.customPath == customPath &&
+          other.brightness == brightness &&
+          other.seedColor == seedColor;
+
+  @override
+  int get hashCode =>
+      Object.hash(id, asset, customPath, brightness, seedColor);
 }
 
 /// All available background themes.

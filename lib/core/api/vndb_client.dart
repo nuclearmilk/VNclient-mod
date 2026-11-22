@@ -40,7 +40,7 @@ class VndbClient {
           if (_token != null) 'Authorization': 'Token $_token',
         },
       ),
-    );
+    )..transformer = BackgroundTransformer();
 
     _dio.interceptors.add(
       InterceptorsWrapper(

@@ -41,13 +41,27 @@ final _shellNavigatorProfile = GlobalKey<NavigatorState>();
 /// Routes that require an authenticated user.
 const _protectedPrefixes = <String>['/list', '/profile'];
 
+/// Notifies [GoRouter] to re-evaluate `redirect` when auth changes without
+/// recreating the router instance.
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 /// The application router.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authNotifierProvider);
-  final startupPage = ref.watch(themeNotifierProvider).startupPage;
+  final startupPage = ref.read(themeNotifierProvider).startupPage;
+  final refreshNotifier = _RouterRefreshNotifier();
 
-  return GoRouter(
+  ref.listen<AuthState>(authNotifierProvider, (prev, next) {
+    if (prev?.isAuthenticated != next.isAuthenticated ||
+        prev?.status != next.status) {
+      refreshNotifier.notify();
+    }
+  });
+
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
+    refreshListenable: refreshNotifier,
     initialLocation: switch (startupPage) {
       StartupPage.search => '/search',
       StartupPage.list => '/list',
@@ -55,6 +69,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       StartupPage.home => '/home',
     },
     redirect: (context, state) {
+      final auth = ref.read(authNotifierProvider);
       final loggedIn = auth.isAuthenticated;
       final goingToLogin = state.matchedLocation == '/login';
       final isProtected =
@@ -238,6 +253,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       body: Center(child: Text(state.error?.toString() ?? '404')),
     ),
   );
+
+  ref.onDispose(() {
+    refreshNotifier.dispose();
+    router.dispose();
+  });
+
+  return router;
 });
 
 /// Convenience helper: navigate to the in-app WebView.

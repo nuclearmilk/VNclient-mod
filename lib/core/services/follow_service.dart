@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/endpoints/vn_endpoint.dart';
 import '../constants/app_constants.dart';
 import '../providers/endpoints_provider.dart';
+import '../providers/prefs_provider.dart';
 
 /// A producer the user follows. Tracks the timestamp of the last new-work
 /// check so that only releases dated after that point generate notifications.
@@ -69,7 +70,7 @@ class ProducerNotification {
     this.read = false,
   });
 
-  /// Unique id: `notif_<vnId>`.
+  /// Unique id: `notif_<vnId>_<producerId>`.
   final String id;
   final String producerId;
   final String producerName;
@@ -140,48 +141,55 @@ String _millisToDisplay(int millis) {
 
 /// State notifier owning the followed-producers list and the notifications.
 ///
-/// Both collections are persisted to [SharedPreferences] as JSON. The new-work
-/// check queries the `/vn` endpoint with a `developer` filter combined with a
-/// `released >= lastSeenAt` date filter, generating a notification for each VN
-/// released after the previously recorded check time. After a successful check
-/// the timestamp is advanced to "now" so the next check only surfaces newer
-/// releases.
+/// Both collections are loaded synchronously from [SharedPreferences] to avoid
+/// startup races, and new-work checks are batched and rate-limited with a
+/// 30-minute cooldown.
 class FollowService extends StateNotifier<FollowState> {
-  FollowService(this._vnEndpoint) : super(const FollowState()) {
-    _load();
-  }
+  FollowService(this._vnEndpoint, this._prefs) : super(_readInitial(_prefs));
 
   final VnEndpoint _vnEndpoint;
-  SharedPreferences? _prefs;
+  final SharedPreferences _prefs;
   bool _checking = false;
 
-  Future<void> _load() async {
-    _prefs = await SharedPreferences.getInstance();
-    final followedRaw = _prefs!.getString(AppConstants.followedProducersKey);
-    final notifRaw = _prefs!.getString(AppConstants.producerNotificationsKey);
+  static const Duration _checkCooldown = Duration(minutes: 30);
+  static const int _batchSize = 20;
+
+  static FollowState _readInitial(SharedPreferences prefs) {
+    final followedRaw = prefs.getString(AppConstants.followedProducersKey);
+    final notifRaw = prefs.getString(AppConstants.producerNotificationsKey);
     final followed = <FollowedProducer>[];
-    if (followedRaw != null) {
-      final list = jsonDecode(followedRaw) as List;
-      followed.addAll(
-        list.map((e) => FollowedProducer.fromJson(e as Map<String, dynamic>)),
-      );
+    if (followedRaw != null && followedRaw.isNotEmpty) {
+      try {
+        final list = jsonDecode(followedRaw) as List;
+        followed.addAll(
+          list.map((e) => FollowedProducer.fromJson(e as Map<String, dynamic>)),
+        );
+      } catch (_) {
+        // Ignore corrupt stored JSON.
+      }
     }
     final notifs = <ProducerNotification>[];
-    if (notifRaw != null) {
-      final list = jsonDecode(notifRaw) as List;
-      notifs.addAll(
-        list.map((e) => ProducerNotification.fromJson(e as Map<String, dynamic>)),
-      );
+    if (notifRaw != null && notifRaw.isNotEmpty) {
+      try {
+        final list = jsonDecode(notifRaw) as List;
+        notifs.addAll(
+          list.map(
+            (e) => ProducerNotification.fromJson(e as Map<String, dynamic>),
+          ),
+        );
+      } catch (_) {
+        // Ignore corrupt stored JSON.
+      }
     }
-    state = FollowState(followed: followed, notifications: notifs);
+    return FollowState(followed: followed, notifications: notifs);
   }
 
   Future<void> _persist() async {
-    await _prefs?.setString(
+    await _prefs.setString(
       AppConstants.followedProducersKey,
       jsonEncode(state.followed.map((e) => e.toJson()).toList()),
     );
-    await _prefs?.setString(
+    await _prefs.setString(
       AppConstants.producerNotificationsKey,
       jsonEncode(state.notifications.map((e) => e.toJson()).toList()),
     );
@@ -244,59 +252,100 @@ class FollowService extends StateNotifier<FollowState> {
     await _persist();
   }
 
-  /// Checks every followed producer for VNs released after the last check
-  /// time and records notifications for each. After a successful check the
-  /// `lastSeenAt` timestamp is advanced to "now". Safe to call repeatedly;
-  /// concurrent calls are ignored.
-  Future<int> checkForNewWorks() async {
+  /// Checks followed producers in batches for VNs released after their last
+  /// check time. Respects a 30-minute cooldown unless [force] is true.
+  Future<int> checkForNewWorks({bool force = false}) async {
     if (_checking) return 0;
-    if (state.followed.isEmpty) return 0;
+    final currentFollowed = state.followed;
+    if (currentFollowed.isEmpty) return 0;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (!force) {
+      final lastCheck = _prefs.getInt(AppConstants.followLastCheckKey) ?? 0;
+      if (now - lastCheck < _checkCooldown.inMilliseconds) {
+        return 0;
+      }
+    }
+
     _checking = true;
     int newCount = 0;
     try {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final newNotifs = <ProducerNotification>[];
-      final updatedFollowed = <FollowedProducer>[];
+      final chunks = <List<FollowedProducer>>[];
+      for (var i = 0; i < currentFollowed.length; i += _batchSize) {
+        final end = (i + _batchSize).clamp(0, currentFollowed.length);
+        chunks.add(currentFollowed.sublist(i, end));
+      }
 
-      for (final producer in state.followed) {
+      final newNotifs = <ProducerNotification>[];
+      final updatedById = <String, FollowedProducer>{
+        for (final p in currentFollowed) p.id: p,
+      };
+
+      await Future.wait(chunks.map((chunk) async {
         try {
-          // Use the recorded timestamp; if missing (migrated data), fall
-          // back to "now" so the first check starts fresh.
-          final threshold = producer.lastSeenAt > 0 ? producer.lastSeenAt : now;
-          final dateStr = _millisToDateStr(threshold);
+          var minThreshold = now;
+          final dateByProducer = <String, String>{};
+          for (final p in chunk) {
+            final threshold = p.lastSeenAt > 0 ? p.lastSeenAt : now;
+            if (threshold < minThreshold) minThreshold = threshold;
+            dateByProducer[p.id] = _millisToDateStr(threshold);
+          }
+          final minDateStr = _millisToDateStr(minThreshold);
+          final Object devFilter = chunk.length == 1
+              ? ['developer', '=', ['id', '=', chunk.first.id]]
+              : [
+                  'or',
+                  ...chunk.map((p) => ['developer', '=', ['id', '=', p.id]]),
+                ];
 
           final result = await _vnEndpoint.query(
             filters: [
               'and',
-              ['developer', '=', ['id', '=', producer.id]],
-              ['released', '>=', dateStr],
+              devFilter,
+              ['released', '>=', minDateStr],
             ],
-            fields: 'title, released',
+            fields: 'title, released, developers{id}',
             sort: 'released',
             reverse: true,
-            results: 50,
+            results: 100,
             page: 1,
           );
-          final vns = result.results;
-          for (final vn in vns) {
-            newNotifs.add(ProducerNotification(
-              id: 'notif_${vn.id}_${producer.id}',
-              producerId: producer.id,
-              producerName: producer.name,
-              vnId: vn.id,
-              vnTitle: vn.title,
-              released: vn.released,
-              createdAt: now,
-            ));
-          }
-          updatedFollowed.add(producer.copyWith(lastSeenAt: now));
-        } catch (_) {
-          // Network/API errors for a single producer shouldn't abort the loop.
-          updatedFollowed.add(producer);
-        }
-      }
 
-      // Merge new notifications, deduping by id and keeping newest-first.
+          final chunkById = {for (final p in chunk) p.id: p};
+          for (final vn in result.results) {
+            for (final dev in vn.developers) {
+              final producer = chunkById[dev.id];
+              if (producer == null) continue;
+              final pDateStr = dateByProducer[producer.id]!;
+              if (vn.released != null &&
+                  vn.released!.compareTo(pDateStr) < 0) {
+                continue;
+              }
+              newNotifs.add(ProducerNotification(
+                id: 'notif_${vn.id}_${producer.id}',
+                producerId: producer.id,
+                producerName: producer.name,
+                vnId: vn.id,
+                vnTitle: vn.title,
+                released: vn.released,
+                createdAt: now,
+              ));
+            }
+          }
+          for (final p in chunk) {
+            updatedById[p.id] = p.copyWith(lastSeenAt: now);
+          }
+        } catch (_) {
+          // Network/API errors for a chunk shouldn't abort other chunks.
+        }
+      }));
+
+      if (!mounted) return 0;
+
+      final updatedFollowed =
+          state.followed.map((p) => updatedById[p.id] ?? p).toList();
+      await _prefs.setInt(AppConstants.followLastCheckKey, now);
+
       if (newNotifs.isNotEmpty) {
         final existing = state.notifications;
         final existingIds = existing.map((e) => e.id).toSet();
@@ -314,7 +363,7 @@ class FollowService extends StateNotifier<FollowState> {
           return newCount;
         }
       }
-      // No new notifications, but we still updated lastSeenAt bookkeeping.
+
       state = FollowState(
         followed: updatedFollowed,
         notifications: state.notifications,
@@ -343,7 +392,10 @@ class FollowState {
 
 final followServiceProvider =
     StateNotifierProvider<FollowService, FollowState>((ref) {
-  return FollowService(ref.watch(vnEndpointProvider));
+  return FollowService(
+    ref.watch(vnEndpointProvider),
+    ref.watch(sharedPreferencesProvider),
+  );
 });
 
 /// Helper exposed for the follow-list page to render the last-check time.

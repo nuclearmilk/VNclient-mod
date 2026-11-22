@@ -21,8 +21,9 @@ class FollowListPage extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             tooltip: '检查新作',
             onPressed: () async {
-              final count =
-                  await ref.read(followServiceProvider.notifier).checkForNewWorks();
+              final count = await ref
+                  .read(followServiceProvider.notifier)
+                  .checkForNewWorks(force: true);
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

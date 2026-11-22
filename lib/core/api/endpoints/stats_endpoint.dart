@@ -7,8 +7,12 @@ class StatsEndpoint {
 
   final VndbClient client;
 
+  Future<Map<String, dynamic>> getStatsRaw() {
+    return client.get('/stats');
+  }
+
   Future<Stats> getStats() async {
-    final json = await client.get('/stats');
+    final json = await getStatsRaw();
     return Stats.fromJson(json);
   }
 }

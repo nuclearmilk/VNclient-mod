@@ -11,6 +11,12 @@ class CharacterEndpoint extends BaseEndpoint<Character> {
       'name, original, image{id,url,dims,sexual,violence},'
       'vns{role,id,title}';
 
+  /// Minimal fields for staff detail voiced-characters section.
+  static const String seiyuuListFields = 'name, original, vns{id,title}';
+
+  /// Minimal fields for the home page today's-birthdays strip.
+  static const String birthdayFields = 'name, original, image{id,url,sexual,violence}';
+
   static const String detailFields =
       'name, original, aliases, description, image{id,url,dims,sexual,violence},'
       'blood_type, height, weight, bust, waist, hips, cup, age, birthday, sex, gender,'
@@ -49,7 +55,7 @@ class CharacterEndpoint extends BaseEndpoint<Character> {
   Future<QueryResult<Character>> bySeiyuu(String staffId, {int results = 100}) {
     return query(
       filters: ['seiyuu', '=', ['id', '=', staffId]],
-      fields: detailFields,
+      fields: seiyuuListFields,
       sort: 'name',
       results: results,
     );
@@ -100,10 +106,26 @@ class CharacterEndpoint extends BaseEndpoint<Character> {
   }) {
     return query(
       filters: ['birthday', '=', [month, day]],
-      fields: listFields,
+      fields: birthdayFields,
       sort: 'name',
       results: results,
       page: 1,
     );
+  }
+
+  /// Raw response for today's birthday characters (for SWR caching).
+  Future<Map<String, dynamic>> byBirthdayRaw(
+    int month,
+    int day, {
+    int results = 30,
+  }) {
+    final params = QueryParams(
+      filters: ['birthday', '=', [month, day]],
+      fields: birthdayFields,
+      sort: 'name',
+      results: results,
+      page: 1,
+    );
+    return client.post(path, body: params.toJson());
   }
 }

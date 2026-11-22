@@ -12,6 +12,14 @@ class ReleaseEndpoint extends BaseEndpoint<Release> {
       'minage, official, freeware, patch, images{id,url,thumbnail,thumbnail_dims},'
       'extlinks{url,label,name,id}';
 
+  /// Lightweight fields used by home release carousels.
+  static const String homeFields =
+      'title, released, platforms, official, images{id,url,thumbnail,thumbnail_dims}';
+
+  /// Lightweight fields used by the VN detail page releases tab & publisher row.
+  static const String vnListFields =
+      'title, released, platforms, official, languages{lang}, producers{id,name,publisher}';
+
   static const String detailFields =
       'title, alttitle, languages{lang,title,latin,mtl,main}, platforms,'
       'media{medium,qty}, vns{rtype,id,title}, producers{id,name,original,developer,publisher,type},'
@@ -49,7 +57,7 @@ class ReleaseEndpoint extends BaseEndpoint<Release> {
   }) {
     return query(
       filters: ['vn', '=', ['id', '=', vnId]],
-      fields: detailFields,
+      fields: vnListFields,
       sort: 'released',
       results: results,
       page: page,
@@ -60,7 +68,7 @@ class ReleaseEndpoint extends BaseEndpoint<Release> {
   Future<QueryResult<Release>> getUpcoming({int limit = 5}) {
     return query(
       filters: ['released', '>', 'today'],
-      fields: listFields,
+      fields: homeFields,
       sort: 'released',
       reverse: false,
       results: limit,
@@ -68,16 +76,42 @@ class ReleaseEndpoint extends BaseEndpoint<Release> {
     );
   }
 
+  /// Raw response for upcoming releases (for SWR caching).
+  Future<Map<String, dynamic>> getUpcomingRaw({int limit = 10}) {
+    final params = QueryParams(
+      filters: const ['released', '>', 'today'],
+      fields: homeFields,
+      sort: 'released',
+      reverse: false,
+      results: limit,
+      page: 1,
+    );
+    return client.post(path, body: params.toJson());
+  }
+
   /// 刚刚发布：今天及之前，按 released 倒序（最新优先）。
   Future<QueryResult<Release>> getJustReleased({int limit = 5}) {
     return query(
       filters: ['released', '<=', 'today'],
-      fields: listFields,
+      fields: homeFields,
       sort: 'released',
       reverse: true,
       results: limit,
       page: 1,
     );
+  }
+
+  /// Raw response for just-released releases (for SWR caching).
+  Future<Map<String, dynamic>> getJustReleasedRaw({int limit = 10}) {
+    final params = QueryParams(
+      filters: const ['released', '<=', 'today'],
+      fields: homeFields,
+      sort: 'released',
+      reverse: true,
+      results: limit,
+      page: 1,
+    );
+    return client.post(path, body: params.toJson());
   }
 
   /// Free-text search.

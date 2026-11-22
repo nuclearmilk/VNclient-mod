@@ -48,8 +48,6 @@ class _NsfImageState extends ConsumerState<NsfImage> {
       (widget.sexual != null && widget.sexual! > 0) ||
       (widget.violence != null && widget.violence! > 0);
 
-  bool get _shouldBlur => _isNsfw && ref.watch(themeNotifierProvider).blurNsfw && !_revealed;
-
   @override
   Widget build(BuildContext context) {
     final url = widget.imageUrl;
@@ -57,18 +55,24 @@ class _NsfImageState extends ConsumerState<NsfImage> {
       return widget.placeholder ?? const SizedBox.shrink();
     }
 
+    final blurNsfw =
+        ref.watch(themeNotifierProvider.select((s) => s.blurNsfw));
+    final shouldBlur = _isNsfw && blurNsfw && !_revealed;
+
     Widget image = CachedNetworkImage(
       imageUrl: url,
       fit: widget.fit,
       width: widget.width,
       height: widget.height,
       placeholder: (_, __) =>
-          widget.placeholder ?? const ColoredBox(color: Colors.black12, child: SizedBox.expand()),
+          widget.placeholder ??
+          const ColoredBox(color: Colors.black12, child: SizedBox.expand()),
       errorWidget: (_, __, ___) =>
-          widget.errorWidget ?? const ColoredBox(color: Colors.black12, child: SizedBox.expand()),
+          widget.errorWidget ??
+          const ColoredBox(color: Colors.black12, child: SizedBox.expand()),
     );
 
-    if (_shouldBlur) {
+    if (shouldBlur) {
       image = Stack(
         fit: StackFit.passthrough,
         children: [
@@ -81,7 +85,8 @@ class _NsfImageState extends ConsumerState<NsfImage> {
               child: GestureDetector(
                 onTap: () => setState(() => _revealed = true),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(16),
@@ -91,7 +96,8 @@ class _NsfImageState extends ConsumerState<NsfImage> {
                     children: [
                       Icon(Icons.visibility_off, color: Colors.white, size: 16),
                       SizedBox(width: 6),
-                      Text('点击查看', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('点击查看',
+                          style: TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   ),
                 ),

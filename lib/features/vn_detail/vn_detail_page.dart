@@ -22,6 +22,7 @@ import '../../widgets/async_value_widget.dart';
 import '../../widgets/nsf_image.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/vndb_icons.dart';
+import 'length_vote_page.dart';
 import 'list_edit_dialog.dart';
 import 'vote_dialog.dart';
 
@@ -34,6 +35,9 @@ class VnDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vn = ref.watch(vnDetailProvider(id));
+    // Kick off releases and characters requests in parallel with vnDetailProvider.
+    ref.listen(releasesByVnProvider(id), (_, __) {});
+    ref.listen(charactersByVnProvider(id), (_, __) {});
     return Scaffold(
       body: AsyncValueWidget(
         value: vn,
@@ -131,7 +135,6 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
             ),
             const SizedBox(width: 8),
           ],
-          flexibleSpace: _GlassAppBarBackground(imageUrl: vn.image?.url),
         ),
 
         // --- 2. Main info area: left cover + right text ---
@@ -281,6 +284,7 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
                   value: vn.lengthMinutes != null
                       ? '${(vn.lengthMinutes! / 60).toStringAsFixed(1)}h'
                       : vn.lengthLabel,
+                  onTap: () => _openLengthVote(context, vn),
                 ),
               ],
             ),
@@ -352,6 +356,26 @@ class _VnDetailViewState extends ConsumerState<_VnDetailView>
       }
     });
   }
+
+  /// Opens the full official play time / length voting page.
+  void _openLengthVote(BuildContext context, Vn vn) {
+    Navigator.of(context)
+        .push<bool>(
+          MaterialPageRoute(
+            builder: (_) => LengthVotePage(
+              vnId: vn.id,
+              vnTitle: vn.title,
+              currentLengthMinutes: vn.lengthMinutes,
+              currentLengthVotes: vn.lengthVotes,
+            ),
+          ),
+        )
+        .then((saved) {
+      if (saved == true && context.mounted) {
+        ref.invalidate(vnDetailProvider(vn.id));
+      }
+    });
+  }
 }
 
 /// A circular glassmorphism button used in the app bar.
@@ -379,45 +403,6 @@ class _GlassButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Blurred background image for the app bar area.
-class _GlassAppBarBackground extends StatelessWidget {
-  const _GlassAppBarBackground({this.imageUrl});
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    if (imageUrl == null || imageUrl!.isEmpty) {
-      return Container(color: Theme.of(context).colorScheme.surface);
-    }
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CachedNetworkImage(
-          imageUrl: imageUrl!,
-          fit: BoxFit.cover,
-          placeholder: (_, __) =>
-              Container(color: Theme.of(context).colorScheme.surface),
-          errorWidget: (_, __, ___) =>
-              Container(color: Theme.of(context).colorScheme.surface),
-        ),
-        // Dark gradient overlay for text legibility
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withValues(alpha: 0.5),
-                Colors.black.withValues(alpha: 0.7),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

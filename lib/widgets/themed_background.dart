@@ -19,7 +19,7 @@ class ThemedBackground extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bg = ref.watch(themeNotifierProvider).background;
+    final bg = ref.watch(themeNotifierProvider.select((s) => s.background));
 
     if (bg.id == 'none') return child;
 

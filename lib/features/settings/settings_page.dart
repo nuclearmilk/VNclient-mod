@@ -80,7 +80,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _showUpdateDialog(result);
       } else if (!result.isError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已是最新版本 (${result.currentVersion})')),
+          SnackBar(content: Text('已是最新版本 (v${result.currentVersion})')),
         );
       }
     }
@@ -95,8 +95,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('当前版本: ${result.currentVersion}'),
-            Text('最新版本: ${result.latestVersion}'),
+            Text('当前版本: v${result.currentVersion}'),
+            Text('最新版本: v${result.latestVersion}'),
             if (result.releaseNotes != null &&
                 result.releaseNotes!.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -375,11 +375,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   )
                 : const Icon(Icons.system_update),
             title: const Text('检查更新'),
-            subtitle: _updateResult != null && _updateResult!.hasUpdate
-                ? Text('新版本可用: v${_updateResult!.latestVersion}',
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.primary))
-                : null,
+            subtitle: _updateResult == null || _updateResult!.isError
+                ? null
+                : _updateResult!.hasUpdate
+                    ? Text(
+                        '新版本可用: v${_updateResult!.latestVersion}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : Text('已是最新版本 (v${_updateResult!.currentVersion})'),
             trailing: _checkingUpdate ? null : const Icon(Icons.chevron_right),
             onTap: _checkingUpdate ? null : _checkForUpdates,
           ),
@@ -606,7 +611,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       final xFile = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 90,
       );
       if (xFile == null) return;
       await ref

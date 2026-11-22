@@ -12,8 +12,12 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
       'id, added, voted, lastmod, vote, started, finished, notes,'
       'labels{id,label},'
       'vn{title, alttitle, titles{lang,title,main}, released, image{id,url,thumbnail,thumbnail_dims},'
-      'languages, platforms, devstatus, rating, votecount, tags{id,name,rating}},'
-      'releases{id,list_status,title}';
+      'languages, platforms, devstatus, rating, votecount}';
+
+  static const String entryFields =
+      'id, vote, started, finished, notes, labels{id,label}';
+
+  static const String tagProfileFields = 'id, vn{tags{id}}';
 
   @override
   String get path => '/ulist';
@@ -64,9 +68,32 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
   ) {
     return query(
       filters: ['id', '=', vnId],
-      fields: listFields,
+      fields: entryFields,
       sort: 'vote',
       results: 1,
+      page: 1,
+      user: userId,
+    );
+  }
+
+  /// Fetches minimal VN tag IDs across the specified labels in a single request
+  /// for building recommendation tag profiles.
+  Future<QueryResult<UlistEntry>> getTagProfile(
+    String userId, {
+    required List<int> labelIds,
+    int results = 100,
+  }) {
+    final Object filters = labelIds.isEmpty
+        ? []
+        : labelIds.length == 1
+            ? ['label', '=', labelIds.first]
+            : ['or', ...labelIds.map((id) => ['label', '=', id])];
+    return query(
+      filters: filters,
+      fields: tagProfileFields,
+      sort: 'lastmod',
+      reverse: true,
+      results: results,
       page: 1,
       user: userId,
     );
@@ -87,13 +114,18 @@ class ListEndpoint extends BaseEndpoint<UlistEntry> {
     return result.count ?? 0;
   }
 
-  /// Fetches the user's list labels.
-  Future<List<UlistLabelDef>> getLabels(String? userId) async {
+  /// Fetches raw JSON for `/ulist_labels` (used for SWR caching).
+  Future<Map<String, dynamic>> getLabelsRaw(String? userId) {
     final params = <String, dynamic>{
       if (userId != null) 'user': userId,
       'fields': 'count',
     };
-    final json = await client.get('/ulist_labels', queryParameters: params);
+    return client.get('/ulist_labels', queryParameters: params);
+  }
+
+  /// Fetches the user's list labels.
+  Future<List<UlistLabelDef>> getLabels(String? userId) async {
+    final json = await getLabelsRaw(userId);
     final list = (json['labels'] as List? ?? [])
         .map((e) => UlistLabelDef.fromJson(e as Map<String, dynamic>))
         .toList();

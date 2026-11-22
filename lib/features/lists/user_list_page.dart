@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/models/list_entry.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/detail_providers.dart';
 import '../../core/providers/endpoints_provider.dart';
@@ -52,123 +53,101 @@ class UserListPage extends ConsumerWidget {
     }
 
     final labelsAsync = ref.watch(userLabelsProvider);
+    final apiLabels = labelsAsync.valueOrNull ?? const <UlistLabelDef>[];
+    final totalCount = ref.watch(userListTotalCountProvider).valueOrNull;
+
+    // Build the tab list immediately using predefined tabs (+ any cached or
+    // freshly fetched labels) so TabBarView starts loading without waiting for
+    // /ulist_labels to return first.
+    final tabs = <_ListTab>[const _ListTab(label: '全部', labelId: null)];
+
+    const predefined = <int>[
+      AppConstants.labelPlaying,
+      AppConstants.labelFinished,
+      AppConstants.labelStalled,
+      AppConstants.labelDropped,
+      AppConstants.labelWishlist,
+      AppConstants.labelVoted,
+      6, // Blacklist
+    ];
+    const predefinedNames = <int, String>{
+      AppConstants.labelPlaying: '在玩',
+      AppConstants.labelFinished: '已完成',
+      AppConstants.labelStalled: '搁置',
+      AppConstants.labelDropped: '弃坑',
+      AppConstants.labelWishlist: '愿望单',
+      AppConstants.labelVoted: '已投票',
+      6: '黑名单',
+    };
+
+    final countById = <int, int>{
+      for (final l in apiLabels) l.id: l.count,
+    };
+
+    String tabLabel(String label, int? count) =>
+        count == null ? label : '$label ($count)';
+
+    for (final id in predefined) {
+      tabs.add(_ListTab(
+        label: tabLabel(predefinedNames[id] ?? 'Label $id', countById[id]),
+        labelId: id,
+      ));
+    }
+
+    // Custom labels (id >= 10, excluding predefined ones).
+    for (final l in apiLabels) {
+      if (predefined.contains(l.id)) continue;
+      if (l.id == 0) continue; // skip "no label"
+      tabs.add(_ListTab(
+        label: tabLabel(l.label, l.count),
+        labelId: l.id,
+      ));
+    }
+
+    // Resolve initial index.
+    final initialIndex = switch (initialTab) {
+      'playing' => 1,
+      'finished' => 2,
+      'stalled' => 3,
+      'dropped' => 4,
+      'wishlist' => 5,
+      'votes' => 6,
+      'blacklist' => 7,
+      _ => 0,
+    };
+    final clampedIndex = initialIndex.clamp(0, tabs.length - 1).toInt();
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.tr('myList'))),
-      body: labelsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48),
-              const SizedBox(height: 12),
-              Text('$e'),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () => ref.invalidate(userLabelsProvider),
-                child: const Text('重试'),
-              ),
-            ],
-          ),
-        ),
-        data: (apiLabels) {
-          // Build the tab list: "All" first, then all predefined labels in a
-          // sensible order, then any custom labels from the API.
-          final tabs = <_ListTab>[_ListTab(label: '全部', labelId: null)];
-
-          // Predefined labels in display order.
-          final predefined = <int?>[
-            AppConstants.labelPlaying,
-            AppConstants.labelFinished,
-            AppConstants.labelStalled,
-            AppConstants.labelDropped,
-            AppConstants.labelWishlist,
-            AppConstants.labelVoted,
-            6, // Blacklist (id=6, not defined as a constant)
-          ];
-          final predefinedNames = <int, String>{
-            AppConstants.labelPlaying: '在玩',
-            AppConstants.labelFinished: '已完成',
-            AppConstants.labelStalled: '搁置',
-            AppConstants.labelDropped: '弃坑',
-            AppConstants.labelWishlist: '愿望单',
-            AppConstants.labelVoted: '已投票',
-            6: '黑名单',
-          };
-
-          // Per-label VN counts (from GET /ulist_labels with fields=count).
-          final countById = <int?, int>{
-            for (final l in apiLabels) l.id: l.count,
-          };
-          // Total entry count for the "全部" tab.
-          final totalCount = ref.watch(userListTotalCountProvider).valueOrNull;
-
-          String tabLabel(String label, int? labelId, int? count) =>
-              count == null ? label : '$label ($count)';
-
-          for (final id in predefined) {
-            tabs.add(_ListTab(
-              label: tabLabel(
-                  predefinedNames[id] ?? 'Label $id', id, countById[id]),
-              labelId: id,
-            ));
-          }
-
-          // Custom labels (id >= 10, excluding predefined ones).
-          for (final l in apiLabels) {
-            if (predefined.contains(l.id)) continue;
-            if (l.id == 0) continue; // skip "no label"
-            tabs.add(_ListTab(
-              label: tabLabel(l.label, l.id, l.count),
-              labelId: l.id,
-            ));
-          }
-
-          // Resolve initial index.
-          final initialIndex = switch (initialTab) {
-            'playing' => 1,
-            'finished' => 2,
-            'stalled' => 3,
-            'dropped' => 4,
-            'wishlist' => 5,
-            'votes' => 6,
-            'blacklist' => 7,
-            _ => 0,
-          };
-          final clampedIndex =
-              initialIndex.clamp(0, tabs.length - 1).toInt();
-
-          return DefaultTabController(
-            length: tabs.length,
-            initialIndex: clampedIndex,
-            child: Column(
-              children: [
-                TabBar(
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  tabs: [
-                    for (var i = 0; i < tabs.length; i++)
-                      Tab(
-                        text: i == 0
-                            ? (totalCount == null
-                                ? tabs[i].label
-                                : '${tabs[i].label} ($totalCount)')
-                            : tabs[i].label,
-                      ),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: tabs
-                        .map((t) => _ListTabView(labelId: t.labelId))
-                        .toList(),
+      body: DefaultTabController(
+        key: ValueKey('ulist_tabs_${tabs.length}'),
+        length: tabs.length,
+        initialIndex: clampedIndex,
+        child: Column(
+          children: [
+            TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: [
+                for (var i = 0; i < tabs.length; i++)
+                  Tab(
+                    text: i == 0
+                        ? (totalCount == null
+                            ? tabs[i].label
+                            : '${tabs[i].label} ($totalCount)')
+                        : tabs[i].label,
                   ),
-                ),
               ],
             ),
-          );
-        },
+            Expanded(
+              child: TabBarView(
+                children: tabs
+                    .map((t) => _ListTabView(labelId: t.labelId))
+                    .toList(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -199,6 +178,7 @@ class _ListTabViewState extends ConsumerState<_ListTabView>
   Object? _error;
   String _searchTerm = '';
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
 
   // ---- 高级筛选状态 (与搜索界面保持一致) ----
@@ -274,11 +254,13 @@ class _ListTabViewState extends ConsumerState<_ListTabView>
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _fetch(reset: true);
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     _debounce?.cancel();
     _tagController.dispose();
@@ -286,6 +268,15 @@ class _ListTabViewState extends ConsumerState<_ListTabView>
     _releasedFromController.dispose();
     _releasedToController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 300 &&
+        !_loading &&
+        _hasMore) {
+      _loadMore();
+    }
   }
 
   void _onSearchChanged(String value) {
@@ -358,12 +349,14 @@ class _ListTabViewState extends ConsumerState<_ListTabView>
             page: _page,
             extraFilters: _buildExtraFilters(),
           );
+      if (!mounted) return;
       setState(() {
         _items.addAll(result.results);
         _hasMore = result.more;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e;
         _loading = false;
@@ -634,10 +627,10 @@ class _ListTabViewState extends ConsumerState<_ListTabView>
       ]);
     }
     return ListView.builder(
+      controller: _scrollController,
       itemCount: _items.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, i) {
         if (i >= _items.length) {
-          _loadMore();
           return const Padding(
             padding: EdgeInsets.all(16),
             child: Center(child: CircularProgressIndicator()),

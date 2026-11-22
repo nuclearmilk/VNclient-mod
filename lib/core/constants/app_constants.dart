@@ -15,11 +15,23 @@ class AppConstants {
   /// Secure storage key for the API auth token.
   static const String tokenKey = 'vndb_api_token';
 
-  /// Secure storage key for the cached user id.
+  /// Cached user metadata keys (stored in SharedPreferences for instant startup).
   static const String userIdKey = 'vndb_user_id';
-
-  /// Secure storage key for the cached username.
   static const String usernameKey = 'vndb_username';
+  static const String userPermissionsKey = 'vndb_user_permissions';
+
+  /// SWR cache keys for home & user labels.
+  static const String cacheHomeStatsKey = 'cache_home_stats_v1';
+  static const String cacheHomeRecentKey = 'cache_home_recent_v1';
+  static const String cacheHomeUpcomingKey = 'cache_home_upcoming_v1';
+  static const String cacheHomeJustReleasedKey = 'cache_home_just_released_v1';
+  static const String cacheTodayBirthdaysKey = 'cache_today_birthdays_v1';
+  static const String cacheTodayBirthdaysDateKey = 'cache_today_birthdays_date_v1';
+  static const String cacheRecommendationsPrefix = 'cache_home_recs_v1_';
+  static const String cacheUserLabelsPrefix = 'cache_user_labels_v1_';
+
+  /// SharedPreferences key for the last followed-producers check timestamp.
+  static const String followLastCheckKey = 'vndb_follow_last_check_at';
 
   /// Default page size for paginated queries.
   static const int defaultPageSize = 20;

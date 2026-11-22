@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/models/character.dart';
+import '../../core/models/release.dart';
 import '../../core/models/vn.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/detail_providers.dart';
@@ -77,16 +80,24 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  Timer? _followCheckTimer;
+
   @override
   void initState() {
     super.initState();
-    // Check followed producers for new works shortly after the home page
-    // first renders. Fire-and-forget; the result updates the badge.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.microtask(
-        () => ref.read(followServiceProvider.notifier).checkForNewWorks(),
-      );
+    // Defer followed-producer checks so they don't compete with initial
+    // above-the-fold rendering or startup API calls.
+    _followCheckTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        ref.read(followServiceProvider.notifier).checkForNewWorks();
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _followCheckTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -121,12 +132,18 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.read(recommendationsSeedProvider.notifier).state++;
-          // Re-check followed producers for new works on pull-to-refresh.
           await Future.wait<dynamic>([
-            ref.refresh(homeDataProvider.future),
-            ref.refresh(recommendationsProvider.future),
-            ref.read(followServiceProvider.notifier).checkForNewWorks(),
+            ref.read(homeStatsProvider.notifier).refresh(),
+            ref.read(homeRecentVnsProvider.notifier).refresh(),
+            ref.read(homeJustReleasedProvider.notifier).refresh(),
+            ref.read(homeUpcomingProvider.notifier).refresh(),
+            ref.read(todayBirthdaysProvider.notifier).refresh(),
+            ref
+                .read(recommendationsProvider.notifier)
+                .refresh(forceReloadProfile: true),
+            ref
+                .read(followServiceProvider.notifier)
+                .checkForNewWorks(force: true),
           ]);
         },
         child: ListView(
@@ -361,10 +378,15 @@ class _StatsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final data = ref.watch(homeDataProvider);
+    final data = ref.watch(homeStatsProvider);
     return AsyncValueWidget(
       value: data,
-      data: (d) => Card(
+      loading: const SizedBox(
+        height: 110,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      errorRetry: () => ref.read(homeStatsProvider.notifier).refresh(),
+      data: (stats) => Card(
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -376,13 +398,13 @@ class _StatsCard extends ConsumerWidget {
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _stat(context, 'VN', d.stats.vn),
-                  _stat(context, 'Releases', d.stats.releases),
-                  _stat(context, 'Characters', d.stats.chars),
-                  _stat(context, 'Producers', d.stats.producers),
-                  _stat(context, 'Staff', d.stats.staff),
-                  _stat(context, 'Tags', d.stats.tags),
-                  _stat(context, 'Traits', d.stats.traits),
+                  _stat(context, 'VN', stats.vn),
+                  _stat(context, 'Releases', stats.releases),
+                  _stat(context, 'Characters', stats.chars),
+                  _stat(context, 'Producers', stats.producers),
+                  _stat(context, 'Staff', stats.staff),
+                  _stat(context, 'Tags', stats.tags),
+                  _stat(context, 'Traits', stats.traits),
                 ],
               ),
             ],
@@ -408,33 +430,36 @@ class _RecentChangesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final data = ref.watch(homeDataProvider);
-    return AsyncValueWidget(
-      value: data,
-      data: (d) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
+    final data = ref.watch(homeRecentVnsProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: '最近更改',
+          icon: Icons.history,
+          actionLabel: '更多',
+          onAction: () => openWebView(
+            context,
+            AppLinks.recentChanges,
             title: '最近更改',
-            icon: Icons.history,
-            actionLabel: '更多',
-            onAction: () => openWebView(
-              context,
-              AppLinks.recentChanges,
-              title: '最近更改',
-            ),
           ),
-          SizedBox(
-            height: 170,
-            child: d.recentVns.isEmpty
+        ),
+        SizedBox(
+          height: 170,
+          child: AsyncValueWidget<List<Vn>>(
+            value: data,
+            loading: const Center(child: CircularProgressIndicator()),
+            errorRetry: () =>
+                ref.read(homeRecentVnsProvider.notifier).refresh(),
+            data: (recentVns) => recentVns.isEmpty
                 ? const Center(child: Text('暂无'))
                 : ListView.separated(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: d.recentVns.length,
+                    itemCount: recentVns.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (context, i) {
-                      final vn = d.recentVns[i];
+                      final vn = recentVns[i];
                       return SizedBox(
                         width: 130,
                         child: _VnCard(
@@ -445,8 +470,8 @@ class _RecentChangesSection extends ConsumerWidget {
                     },
                   ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -457,11 +482,16 @@ class _RecommendationsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authNotifierProvider);
-    if (!auth.isAuthenticated) return const SizedBox.shrink();
+    final isAuthenticated =
+        ref.watch(authNotifierProvider.select((s) => s.isAuthenticated));
+    if (!isAuthenticated) return const SizedBox.shrink();
     final recs = ref.watch(recommendationsProvider);
-    return AsyncValueWidget(
+    return AsyncValueWidget<List<Vn>>(
       value: recs,
+      loading: const SizedBox(
+        height: 170,
+        child: Center(child: CircularProgressIndicator()),
+      ),
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
         return Column(
@@ -472,8 +502,7 @@ class _RecommendationsSection extends ConsumerWidget {
               icon: Icons.recommend,
               actionLabel: '换一批',
               onAction: () {
-                ref.read(recommendationsSeedProvider.notifier).state++;
-                ref.invalidate(recommendationsProvider);
+                ref.read(recommendationsProvider.notifier).shuffleNext();
               },
             ),
             SizedBox(
@@ -510,8 +539,12 @@ class _TodayBirthdaysSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = ref.watch(l10nProvider);
     final async = ref.watch(todayBirthdaysProvider);
-    return AsyncValueWidget(
+    return AsyncValueWidget<List<Character>>(
       value: async,
+      loading: const SizedBox(
+        height: 160,
+        child: Center(child: CircularProgressIndicator()),
+      ),
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
         return Column(
@@ -678,30 +711,36 @@ class _ReleasesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final data = ref.watch(homeDataProvider);
-    return AsyncValueWidget(
-      value: data,
-      data: (d) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showUpcoming) ...[
-            SectionHeader(
-              title: '即将发售',
-              icon: Icons.upcoming,
-              actionLabel: '更多',
-              onAction: () => context.push('/releases'),
-            ),
-            SizedBox(
-              height: 180,
-              child: d.upcoming.isEmpty
+    final upcoming = showUpcoming ? ref.watch(homeUpcomingProvider) : null;
+    final justReleased =
+        showJustReleased ? ref.watch(homeJustReleasedProvider) : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showUpcoming && upcoming != null) ...[
+          SectionHeader(
+            title: '即将发售',
+            icon: Icons.upcoming,
+            actionLabel: '更多',
+            onAction: () => context.push('/releases'),
+          ),
+          SizedBox(
+            height: 180,
+            child: AsyncValueWidget<List<Release>>(
+              value: upcoming,
+              loading: const Center(child: CircularProgressIndicator()),
+              errorRetry: () =>
+                  ref.read(homeUpcomingProvider.notifier).refresh(),
+              data: (items) => items.isEmpty
                   ? const Center(child: Text('暂无'))
                   : ListView.separated(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
-                      itemCount: d.upcoming.length,
+                      itemCount: items.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (context, i) {
-                        final r = d.upcoming[i];
+                        final r = items[i];
                         return SizedBox(
                           width: 160,
                           child: ReleaseCard(
@@ -712,38 +751,44 @@ class _ReleasesSection extends ConsumerWidget {
                       },
                     ),
             ),
-          ],
-          if (showJustReleased) ...[
-            SectionHeader(
-              title: '刚刚发售',
-              icon: Icons.new_releases,
-              actionLabel: '更多',
-              onAction: () => context.push('/releases'),
-            ),
-            SizedBox(
-              height: 180,
-              child: d.justReleased.isEmpty
-                  ? const Center(child: Text('暂无'))
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      itemCount: d.justReleased.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        final r = d.justReleased[i];
-                        return SizedBox(
-                          width: 160,
-                          child: ReleaseCard(
-                            release: r,
-                            onTap: () => context.push('/release/${r.id}'),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+          ),
         ],
-      ),
+        if (showJustReleased && justReleased != null) ...[
+          SectionHeader(
+            title: '刚刚发售',
+            icon: Icons.new_releases,
+            actionLabel: '更多',
+            onAction: () => context.push('/releases'),
+          ),
+          SizedBox(
+            height: 180,
+            child: AsyncValueWidget<List<Release>>(
+              value: justReleased,
+              loading: const Center(child: CircularProgressIndicator()),
+              errorRetry: () =>
+                  ref.read(homeJustReleasedProvider.notifier).refresh(),
+              data: (items) => items.isEmpty
+                  ? const Center(child: Text('暂无'))
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final r = items[i];
+                        return SizedBox(
+                          width: 160,
+                          child: ReleaseCard(
+                            release: r,
+                            onTap: () => context.push('/release/${r.id}'),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

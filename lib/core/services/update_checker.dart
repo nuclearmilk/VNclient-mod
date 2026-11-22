@@ -18,10 +18,10 @@ class UpdateResult {
   /// Whether a newer version is available.
   final bool hasUpdate;
 
-  /// Latest version tag from GitHub (e.g. "v1.1.0").
+  /// Latest version tag from GitHub (e.g. "1.3.11").
   final String latestVersion;
 
-  /// Current installed version (e.g. "1.0.0").
+  /// Current installed version (e.g. "1.3.11").
   final String currentVersion;
 
   /// HTML URL of the release page.
@@ -42,15 +42,20 @@ class UpdateChecker {
 
   final Dio _dio;
 
-  /// Normalize a version string by stripping leading "v" and splitting on ".".
-  List<int> _parseVersion(String v) {
-    final cleaned = v.trim().replaceAll(RegExp(r'^v'), '');
+  /// Normalize a version string by stripping leading `v`/`V`, pre-release/build
+  /// suffixes (e.g. `-mod`, `+16`), and splitting numeric segments on `.`.
+  static List<int> _parseVersion(String v) {
+    final cleaned = v
+        .trim()
+        .replaceAll(RegExp(r'^[vV]'), '')
+        .split(RegExp(r'[-+]'))
+        .first;
     return cleaned.split('.').map((e) => int.tryParse(e) ?? 0).toList();
   }
 
   /// Compare two version strings.
   /// Returns >0 if a > b, 0 if equal, <0 if a < b.
-  int _compareVersions(String a, String b) {
+  static int compareVersions(String a, String b) {
     final pa = _parseVersion(a);
     final pb = _parseVersion(b);
     final maxLen = pa.length > pb.length ? pa.length : pb.length;
@@ -70,17 +75,20 @@ class UpdateChecker {
       final response = await _dio.get<dynamic>(
         AppConstants.githubReleasesApi,
         options: Options(
-          headers: {'Accept': 'application/vnd.github+json'},
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'VNclient-mod/$current',
+          },
           sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
         ),
       );
       final data = response.data as Map<String, dynamic>;
       final tag = data['tag_name'] as String? ?? '';
-      final latest = tag.replaceAll(RegExp(r'^v'), '');
+      final latest = tag.trim().replaceAll(RegExp(r'^[vV]'), '');
       final htmlUrl = data['html_url'] as String?;
       final body = data['body'] as String?;
-      final hasUpdate = _compareVersions(latest, current) > 0;
+      final hasUpdate = compareVersions(latest, current) > 0;
       return UpdateResult(
         hasUpdate: hasUpdate,
         latestVersion: latest,

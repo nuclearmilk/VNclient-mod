@@ -98,8 +98,8 @@ class VndbIcons {
     'ar', 'be', 'bg', 'bs', 'ca', 'ck', 'cs', 'da', 'de', 'el', 'en', 'eo',
     'es', 'et', 'eu', 'fa', 'fi', 'fr', 'ga', 'gd', 'gl', 'he', 'hi', 'hr',
     'hu', 'id', 'it', 'iu', 'ja', 'kk', 'ko', 'la', 'lt', 'lv', 'ms', 'nl',
-    'no', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sq', 'sr', 'sv', 'ta', 'th',
-    'tr', 'uk', 'vi', 'zh',
+    'no', 'pl', 'pt', 'pt-br', 'pt-pt', 'ro', 'ru', 'sk', 'sl', 'sq', 'sr',
+    'sv', 'ta', 'th', 'tr', 'uk', 'vi', 'zh', 'zh-Hans', 'zh-Hant',
   };
 
   /// Platform codes that have a bundled icon.
