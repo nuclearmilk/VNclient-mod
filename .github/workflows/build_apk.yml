@@ -24,12 +24,15 @@ jobs:
       matrix:
         include:
           - abi: armeabi-v7a
+            apk-abi: armeabi-v7a
             target-platform: android-arm
             artifact-name: VNclient-v1.3.11-android-armeabi-v7a.apk
           - abi: arm64-v8a
+            apk-abi: arm64-v8a
             target-platform: android-arm64
             artifact-name: VNclient-v1.3.11-android-arm64-v8a.apk
           - abi: x86-64
+            apk-abi: x86_64
             target-platform: android-x64
             artifact-name: VNclient-v1.3.11-android-x86-64.apk
 
@@ -97,7 +100,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p output
-          SRC="build/app/outputs/flutter-apk/app-${{ matrix.abi }}-release.apk"
+          SRC="build/app/outputs/flutter-apk/app-${{ matrix.apk-abi }}-release.apk"
           if [ ! -f "$SRC" ]; then
             echo "::error::未找到构建产物 $SRC"
             ls -la build/app/outputs/flutter-apk/ || true
